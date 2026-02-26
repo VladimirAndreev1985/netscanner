@@ -32,17 +32,23 @@ class ScanScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #00ff00]"
-            "  _   _      _   ____                                  \n"
-            " | \\| | ___| |_/ ___|  ___ __ _ _ __  _ __   ___ _ __ \n"
-            " |  \\| |/ _ \\ __\\___ \\ / __/ _` | '_ \\| '_ \\ / _ \\ '__|\n"
-            " | |\\  |  __/ |_ ___) | (_| (_| | | | | | | |  __/ |   \n"
-            " |_| \\_|\\___|\\__|____/ \\___\\__,_|_| |_|_| |_|\\___|_|   \n"
-            f"[/]\n[#00aaff]  {t('app_subtitle')}[/]",
+            f"[bold #00ff00] NetScanner [/] │ "
+            f"[#00aaff]{t('app_subtitle')}[/] │ "
+            f"[#8b949e]1[/]: Scan │ [#8b949e]5[/]: WiFi",
             id="header",
         )
 
         with Vertical(id="scan-container"):
+            yield Static(
+                "[bold #00ff00]"
+                "  _   _      _   ____                                  \n"
+                " | \\| | ___| |_/ ___|  ___ __ _ _ __  _ __   ___ _ __ \n"
+                " |  \\| |/ _ \\ __\\___ \\ / __/ _` | '_ \\| '_ \\ / _ \\ '__|\n"
+                " | |\\  |  __/ |_ ___) | (_| (_| | | | | | | |  __/ |   \n"
+                " |_| \\_|\\___|\\__|____/ \\___\\__,_|_| |_|_| |_|\\___|_|   \n"
+                f"[/][#00aaff]  {t('app_subtitle')}[/]",
+                id="banner",
+            )
             yield Static(f"[bold #00ff00]{t('target')}[/]", classes="section-title")
             with Horizontal():
                 yield Input(placeholder=t("target_placeholder"), id="target-input")
