@@ -481,7 +481,21 @@ class WiFiScreen(Screen):
             subnet = ""
             if self._connection_info and self._connection_info.subnet:
                 subnet = self._connection_info.subnet
-            self.post_message(self.ProceedToScan(subnet))
+            # Switch to scan screen directly
+            self.app.switch_screen("scan")
+            if subnet:
+                self.app.call_after_refresh(
+                    lambda: self._set_scan_target(subnet)
+                )
+
+    def _set_scan_target(self, subnet: str) -> None:
+        """Set target on scan screen after switch."""
+        try:
+            from ui.screens.scan_screen import ScanScreen
+            scan_screen = self.app.query_one(ScanScreen)
+            scan_screen.set_target(subnet)
+        except Exception:
+            pass
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle network selection from table."""

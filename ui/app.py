@@ -55,7 +55,7 @@ class NetScannerApp(App):
 
     def on_mount(self) -> None:
         """Show WiFi screen on startup."""
-        self.switch_screen("wifi")
+        self.push_screen("wifi")
 
     # ═══ Screen switching ═══
 
@@ -102,19 +102,19 @@ class NetScannerApp(App):
         )
 
     def on_wifi_screen_proceed_to_scan(self, event: WiFiScreen.ProceedToScan) -> None:
-        """Switch to scan screen with pre-filled target."""
-        subnet = event.subnet
-
-        def _after_switch() -> None:
-            if subnet:
-                try:
-                    scan_screen = self.query_one(ScanScreen)
-                    scan_screen.set_target(subnet)
-                except Exception as e:
-                    logger.debug(f"set_target after switch: {e}")
-
+        """Switch to scan screen with pre-filled target (backup handler)."""
         self.switch_screen("scan")
-        self.call_after_refresh(_after_switch)
+        if event.subnet:
+            self.call_after_refresh(
+                lambda: self._try_set_scan_target(event.subnet)
+            )
+
+    def _try_set_scan_target(self, subnet: str) -> None:
+        try:
+            scan_screen = self.query_one(ScanScreen)
+            scan_screen.set_target(subnet)
+        except Exception as e:
+            logger.debug(f"set_target: {e}")
 
     # ═══ Scan Screen Events ═══
 
