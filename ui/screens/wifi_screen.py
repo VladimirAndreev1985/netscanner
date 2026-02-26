@@ -196,6 +196,12 @@ class WiFiScreen(Screen):
                 f"[#888]{t('not_connected')}[/]"
             )
 
+    async def _refresh_all(self) -> None:
+        """Reload adapters, then scan networks."""
+        await self._load_adapters()
+        if self._selected_adapter:
+            await self._quick_scan()
+
     # ═══ Network Scanning ═══
 
     async def _quick_scan(self) -> None:
@@ -471,8 +477,7 @@ class WiFiScreen(Screen):
         elif btn_id == "wifi-deep-scan":
             asyncio.create_task(self._deep_scan())
         elif btn_id == "wifi-refresh":
-            asyncio.create_task(self._load_adapters())
-            asyncio.create_task(self._quick_scan())
+            asyncio.create_task(self._refresh_all())
         elif btn_id == "wifi-connect":
             asyncio.create_task(self._connect_to_network())
         elif btn_id == "wifi-disconnect":

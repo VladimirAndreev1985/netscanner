@@ -90,6 +90,10 @@ class ScanScreen(Screen):
                 yield Button(
                     t("view_results"), id="view-results-btn",
                 )
+                yield Button(
+                    t("back_to_wifi"), id="back-wifi-btn",
+                    variant="primary",
+                )
                 yield Static(
                     f"[#3a4a3a]{t('status_standby')}[/]",
                     id="scan-status",
@@ -137,6 +141,8 @@ class ScanScreen(Screen):
             self.post_message(self.ScanAbortRequested())
         elif btn_id == "view-results-btn":
             self.post_message(self.ViewResultsRequested())
+        elif btn_id == "back-wifi-btn":
+            self.app.action_show_wifi()
         elif btn_id == "select-all-btn":
             self._toggle_select_all()
         elif btn_id == "rescan-btn":

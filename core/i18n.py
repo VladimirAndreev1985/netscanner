@@ -272,6 +272,7 @@ TRANSLATIONS = {
         "status_standby": "STANDBY",
         "status_scanning": "SCANNING",
         "execute_scan": "EXECUTE SCAN",
+        "back_to_wifi": "WIFI",
     },
 
     "ru": {
@@ -534,6 +535,7 @@ TRANSLATIONS = {
         "status_standby": "ГОТОВ",
         "status_scanning": "СКАНИРОВАНИЕ",
         "execute_scan": "НАЧАТЬ СКАНИРОВАНИЕ",
+        "back_to_wifi": "WIFI",
     },
 }
 

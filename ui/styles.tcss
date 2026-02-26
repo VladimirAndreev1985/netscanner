@@ -189,6 +189,22 @@ Screen {
     color: #050508;
 }
 
+#back-wifi-btn {
+    width: auto;
+    min-width: 12;
+    height: 3;
+    background: #0a1a2a;
+    color: #00d4ff;
+    text-align: center;
+    margin: 0 1 0 0;
+    border: solid #1a2a3a;
+}
+
+#back-wifi-btn:hover {
+    background: #00d4ff;
+    color: #050508;
+}
+
 #scan-status {
     width: auto;
     height: 3;
