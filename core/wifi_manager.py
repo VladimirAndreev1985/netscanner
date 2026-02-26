@@ -81,11 +81,21 @@ class ConnectionInfo:
 # Helper: run shell command
 # ═══════════════════════════════════════════════════════════════
 
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\([A-Za-z]")
+# Comprehensive regex for ALL ANSI/terminal escape sequences
+_ANSI_RE = re.compile(
+    r"\x1b"           # ESC character
+    r"(?:"
+    r"\[[0-9;?<>=]*[A-Za-z~]"   # CSI sequences: \x1b[...X (incl. mouse, DEC private)
+    r"|\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC sequences: \x1b]...BEL or \x1b]...\x1b\\
+    r"|\([A-Za-z]"               # Character set: \x1b(X
+    r"|[=>NOM78DHE]"             # Single-char sequences
+    r"|P[^\x1b]*\x1b\\\\"       # DCS sequences
+    r")"
+)
 
 
 def _strip_ansi(text: str) -> str:
-    """Remove ANSI escape sequences from text."""
+    """Remove all ANSI/terminal escape sequences from text."""
     return _ANSI_RE.sub("", text)
 
 
@@ -93,14 +103,13 @@ async def _run(cmd: list[str], timeout: int = 30,
                new_session: bool = False) -> tuple[str, str, int]:
     """Run command and return (stdout, stderr, returncode).
 
-    Args:
-        new_session: If True, start process in a new session to isolate
-                     it from the terminal (prevents ANSI leakage from
-                     tools like airmon-ng).
+    All subprocesses get stdin=/dev/null to prevent terminal interference
+    when running inside a TUI. ANSI codes are stripped from output.
     """
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             start_new_session=new_session,
@@ -314,8 +323,12 @@ async def scan_networks_deep(
     tmp_prefix = os.path.join(tempfile.gettempdir(), f"netscanner_airodump_{int(time.time())}")
     csv_file = f"{tmp_prefix}-01.csv"
 
+    cleanup_needed = True
     try:
-        # 1. Kill interfering processes (new_session to isolate from TUI)
+        # 0. Suppress kernel console messages (they corrupt TUI display)
+        await _run(["dmesg", "-D"], timeout=3, new_session=True)
+
+        # 1. Kill interfering processes (fully isolated from TUI)
         log("Stopping interfering processes...")
         await _run(["airmon-ng", "check", "kill"], timeout=10, new_session=True)
         await asyncio.sleep(1)
@@ -330,7 +343,6 @@ async def scan_networks_deep(
             return []
 
         # Detect actual monitor interface name
-        # airmon-ng might create wlan0mon or mon0
         for possible in [mon_iface, "mon0", f"{adapter}mon"]:
             check_out, _, _ = await _run(["iw", "dev"])
             if possible in check_out:
@@ -339,22 +351,26 @@ async def scan_networks_deep(
 
         log(f"Monitor interface: {mon_iface}")
 
-        # 3. Run airodump-ng (fully isolated from terminal)
+        # 3. Run airodump-ng (fully isolated: new session, no stdin/stdout/stderr)
         log(f"Scanning airwaves for {duration} seconds...")
         proc = await asyncio.create_subprocess_exec(
             "airodump-ng", mon_iface,
             "--write", tmp_prefix,
             "--output-format", "csv",
             "--write-interval", "1",
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
             start_new_session=True,
         )
 
-        # Wait for scan duration
-        await asyncio.sleep(duration)
+        # Wait for scan duration with progress updates
+        for elapsed in range(duration):
+            await asyncio.sleep(1)
+            if log_callback and elapsed % 5 == 4:
+                log(f"Scanning... {elapsed + 1}/{duration}s")
 
-        # Kill airodump (use PGID to kill entire process group)
+        # Kill airodump (kill entire process group since it's in its own session)
         try:
             import signal as sig
             os.killpg(os.getpgid(proc.pid), sig.SIGTERM)
@@ -375,8 +391,12 @@ async def scan_networks_deep(
         await _run(["systemctl", "restart", "NetworkManager"], timeout=15)
         await asyncio.sleep(3)
 
-        # 6. Parse CSV results
+        # 6. Re-enable kernel console messages
+        await _run(["dmesg", "-E"], timeout=3, new_session=True)
+
+        # 7. Parse CSV results
         log("Parsing scan results...")
+        cleanup_needed = False
         return _parse_airodump_csv(csv_file)
 
     except Exception as e:
@@ -384,9 +404,12 @@ async def scan_networks_deep(
         log(f"Error: {e}")
         return []
     finally:
-        # Cleanup: ensure monitor mode is stopped
-        await _run(["airmon-ng", "stop", mon_iface], timeout=5, new_session=True)
-        await _run(["systemctl", "restart", "NetworkManager"], timeout=10)
+        if cleanup_needed:
+            # Only cleanup if the try block didn't complete fully
+            await _run(["airmon-ng", "stop", mon_iface], timeout=5, new_session=True)
+            await _run(["systemctl", "restart", "NetworkManager"], timeout=10)
+        # Always re-enable kernel console messages
+        await _run(["dmesg", "-E"], timeout=3, new_session=True)
         # Clean temp files
         for suffix in ["-01.csv", "-01.kismet.csv", "-01.kismet.netxml",
                        "-01.cap", "-01.log.csv"]:

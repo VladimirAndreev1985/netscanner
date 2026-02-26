@@ -236,18 +236,28 @@ class WiFiScreen(Screen):
             except Exception:
                 pass
 
-        progress.update_progress(10, t("starting_monitor"))
+        try:
+            progress.update_progress(10, t("starting_monitor"))
 
-        from core.wifi_manager import scan_networks_deep
-        self._networks = await scan_networks_deep(
-            self._selected_adapter,
-            duration=20,
-            log_callback=log_cb,
-        )
+            from core.wifi_manager import scan_networks_deep
+            self._networks = await scan_networks_deep(
+                self._selected_adapter,
+                duration=20,
+                log_callback=log_cb,
+            )
 
-        progress.complete("")
-        self._populate_network_table()
-        self._scanning = False
+            progress.complete("")
+            self._populate_network_table()
+
+            # Force full screen refresh to recover from any terminal corruption
+            # caused by airmon-ng / kernel messages during monitor mode
+            self.app.refresh(repaint=True)
+
+        except Exception as e:
+            log.write(f"[#ff0040]Error: {e}[/]")
+            progress.complete("")
+        finally:
+            self._scanning = False
 
     def _populate_network_table(self) -> None:
         """Fill network table with scan results."""
