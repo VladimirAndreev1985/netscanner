@@ -248,6 +248,22 @@ TRANSLATIONS = {
         "recon_complete": "Recon complete!",
         "no_networks": "No networks found.",
         "footer_wifi": "5: WiFi | R: Refresh | D: Deep Scan | Enter: Select | Q: Quit",
+
+        # ─── Found Devices Panel ───
+        "found_devices": "Found Devices",
+        "select_all": "Select All",
+        "deselect_all": "Deselect All",
+        "rescan_selected": "Rescan Selected",
+        "no_devices_yet": "No devices found yet. Run a scan first.",
+        "selected_count": "Selected: {count}",
+        "rescan_scanning": "Rescanning {count} devices...",
+        "col_select": "☐",
+        "col_ip": "IP",
+        "col_mac": "MAC",
+        "col_vendor": "Vendor",
+        "col_ports": "Ports",
+        "col_type": "Type",
+        "col_risk": "Risk",
     },
 
     "ru": {
@@ -486,6 +502,22 @@ TRANSLATIONS = {
         "recon_complete": "Разведка завершена!",
         "no_networks": "Сети не найдены.",
         "footer_wifi": "5: WiFi | R: Обновить | D: Глубокий скан | Enter: Выбрать | Q: Выход",
+
+        # ─── Панель найденных устройств ───
+        "found_devices": "Найденные устройства",
+        "select_all": "Выбрать все",
+        "deselect_all": "Снять все",
+        "rescan_selected": "Сканировать выбранные",
+        "no_devices_yet": "Устройства ещё не найдены. Запустите сканирование.",
+        "selected_count": "Выбрано: {count}",
+        "rescan_scanning": "Пересканирование {count} устройств...",
+        "col_select": "☐",
+        "col_ip": "IP",
+        "col_mac": "MAC",
+        "col_vendor": "Производитель",
+        "col_ports": "Порты",
+        "col_type": "Тип",
+        "col_risk": "Риск",
     },
 }
 

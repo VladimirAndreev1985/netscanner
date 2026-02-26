@@ -124,6 +124,13 @@ class NetScannerApp(App):
             return
         self._run_scan(event.target, event.scan_type)
 
+    def on_scan_screen_rescan_requested(self, event: ScanScreen.RescanRequested) -> None:
+        """Handle rescan of selected devices."""
+        if self._scan_running:
+            self.notify(t("scan_already_running"), severity="warning")
+            return
+        self._run_scan(event.targets, event.scan_type)
+
     def on_scan_screen_auto_pwn_requested(self, event: ScanScreen.AutoPwnRequested) -> None:
         """Handle auto-pwn request from scan screen."""
         self.switch_screen("autopwn")
@@ -174,6 +181,20 @@ class NetScannerApp(App):
         self._export_report(event.format)
 
     # ═══ Core Operations ═══
+
+    def _pass_devices_to_scan_screen(self, devices) -> None:
+        """Pass found devices to scan screen for targeted rescanning."""
+        try:
+            for s in self.screen_stack:
+                if isinstance(s, ScanScreen):
+                    s.load_devices(devices)
+                    return
+            # If scan screen is not in stack, try installed screens
+            scan_screen = self.get_screen("scan")
+            if isinstance(scan_screen, ScanScreen):
+                scan_screen.load_devices(devices)
+        except Exception:
+            pass
 
     def _run_scan(self, target: str, scan_type: str) -> None:
         """Run network scan in background."""
@@ -226,6 +247,9 @@ class NetScannerApp(App):
                     title=t("scan_complete_title"),
                     severity="information",
                 )
+
+                # Save devices to scan screen for targeted rescan
+                self._pass_devices_to_scan_screen(devices)
 
                 # Auto-switch to results
                 self.switch_screen("results")

@@ -102,6 +102,40 @@ Screen {
     text-style: bold;
 }
 
+/* ═══ Found Devices Panel ═══ */
+#found-section {
+    margin: 1 0;
+}
+
+#found-count {
+    text-style: bold;
+    margin: 0 0 0 0;
+}
+
+#found-buttons {
+    layout: horizontal;
+    height: 3;
+    margin: 0 0 1 0;
+}
+
+#found-devices {
+    height: auto;
+    max-height: 16;
+    background: #0d1117;
+    border: solid #30363d;
+}
+
+#selected-info {
+    width: auto;
+    padding: 0 2;
+    height: 3;
+    content-align: center middle;
+}
+
+#rescan-btn {
+    min-width: 24;
+}
+
 #subnet-list {
     height: auto;
     max-height: 12;

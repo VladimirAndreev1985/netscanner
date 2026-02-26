@@ -1,9 +1,9 @@
-"""Scan setup screen — target selection, scan mode, auto-detect."""
+"""Scan setup screen — target selection, scan mode, auto-detect, found devices."""
 
 from textual.screen import Screen
 from textual.app import ComposeResult
-from textual.widgets import Static, Button, Input, RichLog
-from textual.containers import Vertical, Horizontal
+from textual.widgets import Static, Button, Input, RichLog, DataTable
+from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual.message import Message
 
 from core.i18n import t
@@ -25,10 +25,19 @@ class ScanScreen(Screen):
             self.target = target
             self.mode = mode
 
+    class RescanRequested(Message):
+        def __init__(self, targets: str, scan_type: str) -> None:
+            super().__init__()
+            self.targets = targets
+            self.scan_type = scan_type
+
     def __init__(self):
         super().__init__()
         self._scan_type = "normal"
         self._subnets: list[str] = []
+        self._devices = []
+        self._selected_ips: set[str] = set()
+        self._all_selected = False
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -38,7 +47,7 @@ class ScanScreen(Screen):
             id="header",
         )
 
-        with Vertical(id="scan-container"):
+        with ScrollableContainer(id="scan-container"):
             yield Static(
                 "[bold #00ff00]"
                 "  _   _      _   ____                                  \n"
@@ -67,6 +76,21 @@ class ScanScreen(Screen):
             yield ScanProgress()
             yield Button(t("start_scan"), id="start-scan-btn", variant="success")
 
+            # ═══ Found Devices Section ═══
+            with Vertical(id="found-section", classes="hidden"):
+                yield Static("", id="found-count")
+                with Horizontal(id="found-buttons"):
+                    yield Button(
+                        t("select_all"), id="select-all-btn",
+                        classes="action-btn",
+                    )
+                    yield Button(
+                        t("rescan_selected"), id="rescan-btn",
+                        variant="success", classes="action-btn",
+                    )
+                    yield Static("", id="selected-info")
+                yield DataTable(id="found-devices")
+
             yield Static(f"[bold #00ff00]{t('detected_subnets')}[/]", classes="section-title")
             yield RichLog(id="subnet-list", wrap=True, max_lines=50, markup=True)
 
@@ -74,6 +98,12 @@ class ScanScreen(Screen):
 
     def on_mount(self) -> None:
         self._update_mode_description()
+        table = self.query_one("#found-devices", DataTable)
+        table.add_columns(
+            t("col_select"), t("col_ip"), t("col_mac"),
+            t("col_vendor"), t("col_ports"), t("col_type"), t("col_risk"),
+        )
+        table.cursor_type = "row"
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id or ""
@@ -81,8 +111,27 @@ class ScanScreen(Screen):
             self._auto_detect()
         elif btn_id == "start-scan-btn":
             self._start_scan()
+        elif btn_id == "select-all-btn":
+            self._toggle_select_all()
+        elif btn_id == "rescan-btn":
+            self._rescan_selected()
         elif btn_id.startswith("mode-"):
             self._select_mode(btn_id.replace("mode-", ""))
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Toggle device selection on row click."""
+        table_id = event.data_table.id
+        if table_id != "found-devices":
+            return
+        if not event.row_key or not event.row_key.value:
+            return
+
+        ip = event.row_key.value
+        if ip in self._selected_ips:
+            self._selected_ips.discard(ip)
+        else:
+            self._selected_ips.add(ip)
+        self._refresh_found_table()
 
     def _select_mode(self, mode: str) -> None:
         for btn in self.query(".scan-mode-btn"):
@@ -151,6 +200,85 @@ class ScanScreen(Screen):
             self.post_message(self.AutoPwnRequested(target, "normal"))
         else:
             self.post_message(self.ScanRequested(target, self._scan_type))
+
+    # ═══ Found Devices ═══
+
+    def load_devices(self, devices) -> None:
+        """Load found devices into the table (called from app after scan)."""
+        self._devices = devices
+        self._selected_ips = set()
+        self._all_selected = False
+
+        section = self.query_one("#found-section")
+        if devices:
+            section.remove_class("hidden")
+            self.query_one("#found-count", Static).update(
+                f"[bold #00ff00]{t('found_devices').upper()} ({len(devices)})[/]"
+            )
+        else:
+            section.add_class("hidden")
+            return
+
+        self._refresh_found_table()
+
+    def _refresh_found_table(self) -> None:
+        """Refresh the found devices table with current selection state."""
+        table = self.query_one("#found-devices", DataTable)
+        table.clear()
+
+        for dev in self._devices:
+            ip = dev.ip
+            check = "☑" if ip in self._selected_ips else "☐"
+
+            mac = (dev.mac or "—")[:17]
+            vendor = (dev.vendor or "—")[:14]
+            ports = str(len(dev.open_ports)) if dev.open_ports else "0"
+            dtype = (dev.device_type or "host")[:10]
+
+            # Risk coloring
+            risk = dev.risk_level if hasattr(dev, "risk_level") else "info"
+            risk_colors = {
+                "critical": "[#ff0000]CRIT[/]",
+                "high": "[#ff6600]HIGH[/]",
+                "medium": "[#ffaa00]MED[/]",
+                "low": "[#00aaff]LOW[/]",
+                "info": "[#666]—[/]",
+            }
+            risk_str = risk_colors.get(risk, "[#666]—[/]")
+
+            table.add_row(check, ip, mac, vendor, ports, dtype, risk_str, key=ip)
+
+        # Update selected count
+        count = len(self._selected_ips)
+        info = self.query_one("#selected-info", Static)
+        if count:
+            info.update(f"[#00ff00]{t('selected_count', count=count)}[/]")
+        else:
+            info.update("")
+
+    def _toggle_select_all(self) -> None:
+        """Toggle select/deselect all devices."""
+        if self._all_selected:
+            self._selected_ips.clear()
+            self._all_selected = False
+            self.query_one("#select-all-btn", Button).label = t("select_all")
+        else:
+            self._selected_ips = {dev.ip for dev in self._devices}
+            self._all_selected = True
+            self.query_one("#select-all-btn", Button).label = t("deselect_all")
+        self._refresh_found_table()
+
+    def _rescan_selected(self) -> None:
+        """Rescan selected devices."""
+        if not self._selected_ips:
+            # If nothing selected, select all
+            self._selected_ips = {dev.ip for dev in self._devices}
+
+        targets = ",".join(sorted(self._selected_ips))
+        scan_type = self._scan_type if self._scan_type != "autopwn" else "deep"
+        self.post_message(self.RescanRequested(targets, scan_type))
+
+    # ═══ Public API ═══
 
     def set_target(self, target: str) -> None:
         """Pre-fill the target input (called from WiFi screen)."""
