@@ -6,6 +6,8 @@ from textual.containers import Horizontal
 from textual.app import ComposeResult
 from textual.message import Message
 
+from core.i18n import t
+
 
 class FilterBar(Horizontal):
     """Horizontal bar with filter buttons for device types."""
@@ -16,16 +18,17 @@ class FilterBar(Horizontal):
             super().__init__()
             self.filter_type = filter_type
 
-    FILTERS = [
-        ("All", "all"),
-        ("Cameras", "camera"),
-        ("IoT", "iot"),
-        ("Routers", "router"),
-        ("PCs", "pc"),
-        ("NVR/DVR", "nvr"),
-        ("Printers", "printer"),
-        ("Vulnerable", "vulnerable"),
-        ("Compromised", "compromised"),
+    # (i18n_key, filter_id)
+    FILTER_KEYS = [
+        ("all", "all"),
+        ("cameras", "camera"),
+        ("iot", "iot"),
+        ("routers", "router"),
+        ("pcs", "pc"),
+        ("nvr_dvr", "nvr"),
+        ("printers", "printer"),
+        ("vulnerable", "vulnerable"),
+        ("compromised", "compromised"),
     ]
 
     def __init__(self, **kwargs):
@@ -33,8 +36,8 @@ class FilterBar(Horizontal):
         self._active_filter = "all"
 
     def compose(self) -> ComposeResult:
-        for label, filter_id in self.FILTERS:
-            btn = Button(label, id=f"filter-{filter_id}", classes="filter-btn")
+        for i18n_key, filter_id in self.FILTER_KEYS:
+            btn = Button(t(i18n_key), id=f"filter-{filter_id}", classes="filter-btn")
             if filter_id == "all":
                 btn.add_class("active")
             yield btn

@@ -8,6 +8,7 @@ from textual.app import App
 from textual.binding import Binding
 
 from core.device import Device
+from core.i18n import t, load_language
 from ui.screens.scan_screen import ScanScreen
 from ui.screens.results_screen import ResultsScreen
 from ui.screens.device_screen import DeviceScreen
@@ -45,6 +46,7 @@ class NetScannerApp(App):
 
     def __init__(self):
         super().__init__()
+        load_language()
         self._devices: list[Device] = []
         self._scan_running = False
 
@@ -63,7 +65,7 @@ class NetScannerApp(App):
             screen = self.query_one(ResultsScreen)
             screen.load_devices(self._devices)
         else:
-            self.notify("No scan results yet. Run a scan first.", severity="warning")
+            self.notify(t("no_results"), severity="warning")
 
     def action_show_gallery(self) -> None:
         if self._devices:
@@ -71,17 +73,15 @@ class NetScannerApp(App):
             screen = self.query_one(GalleryScreen)
             screen.load_cameras(self._devices)
         else:
-            self.notify("No scan results yet.", severity="warning")
+            self.notify(t("no_results"), severity="warning")
 
     def action_show_autopwn(self) -> None:
         self.switch_screen("autopwn")
 
     def action_help(self) -> None:
         self.notify(
-            "NetScanner Help:\n"
-            "1: Scan Screen | 2: Results | 3: Gallery | 4: Auto-Pwn\n"
-            "Q: Quit | Enter: Select | Tab: Navigate",
-            title="Help",
+            t("help_text"),
+            title=t("help"),
             timeout=10,
         )
 
@@ -90,7 +90,7 @@ class NetScannerApp(App):
     def on_scan_screen_scan_requested(self, event: ScanScreen.ScanRequested) -> None:
         """Handle scan request from scan screen."""
         if self._scan_running:
-            self.notify("Scan already running!", severity="warning")
+            self.notify(t("scan_already_running"), severity="warning")
             return
         self._run_scan(event.target, event.scan_type)
 
@@ -148,25 +148,25 @@ class NetScannerApp(App):
         async def do_scan():
             try:
                 scan_screen = self.query_one(ScanScreen)
-                scan_screen.set_progress(10, f"Scanning {target}...")
+                scan_screen.set_progress(10, t("scanning_target", target=target))
 
                 from core.scanner import full_scan
                 devices = await full_scan(target, scan_type)
 
-                scan_screen.set_progress(50, "Fingerprinting devices...")
+                scan_screen.set_progress(50, t("fingerprinting"))
                 from core.fingerprint import fingerprint_all
                 devices = await fingerprint_all(devices)
 
-                scan_screen.set_progress(70, "Checking vulnerabilities...")
+                scan_screen.set_progress(70, t("checking_vulns"))
                 from core.vuln_checker import check_all_devices
                 devices = check_all_devices(devices)
 
                 if scan_type == "deep":
-                    scan_screen.set_progress(80, "Analyzing cameras...")
+                    scan_screen.set_progress(80, t("analyzing_cameras"))
                     from core.camera_analyzer import analyze_all_cameras
                     devices = await analyze_all_cameras(devices)
 
-                    scan_screen.set_progress(90, "Checking credentials...")
+                    scan_screen.set_progress(90, t("checking_credentials"))
                     from core.cred_checker import check_all_devices as check_creds
                     devices = await check_creds(devices)
 
@@ -174,8 +174,8 @@ class NetScannerApp(App):
                 scan_screen.scan_complete(len(devices))
 
                 self.notify(
-                    f"Scan complete! Found {len(devices)} devices.",
-                    title="Scan Complete",
+                    t("scan_complete", count=len(devices)),
+                    title=t("scan_complete_title"),
                     severity="information",
                 )
 
@@ -186,7 +186,7 @@ class NetScannerApp(App):
 
             except Exception as e:
                 logger.error(f"Scan failed: {e}")
-                self.notify(f"Scan failed: {e}", severity="error")
+                self.notify(f"{t('error')}: {e}", severity="error")
             finally:
                 self._scan_running = False
 
@@ -199,9 +199,6 @@ class NetScannerApp(App):
         async def do_autopwn():
             try:
                 screen = self.query_one(AutoPwnScreen)
-
-                def log_cb(msg: str):
-                    self.call_from_thread(screen.log, msg)
 
                 from core.auto_pwn import auto_pwn
                 result = await auto_pwn(
@@ -220,19 +217,19 @@ class NetScannerApp(App):
                 )
 
                 self.notify(
-                    f"Auto-Pwn complete! "
-                    f"{result.total_found} found, "
-                    f"{result.vulnerable} vulnerable, "
-                    f"{result.compromised} compromised.",
-                    title="Auto-Pwn Complete",
+                    t("autopwn_complete",
+                      found=result.total_found,
+                      vuln=result.vulnerable,
+                      comp=result.compromised),
+                    title=t("autopwn_complete_title"),
                     severity="information",
                     timeout=15,
                 )
 
             except Exception as e:
                 logger.error(f"Auto-Pwn failed: {e}")
-                screen.log(f"[bold #ff0000]Error: {e}[/]")
-                self.notify(f"Auto-Pwn failed: {e}", severity="error")
+                screen.log(f"[bold #ff0000]{t('error')}: {e}[/]")
+                self.notify(f"{t('error')}: {e}", severity="error")
             finally:
                 self._scan_running = False
 
@@ -241,7 +238,7 @@ class NetScannerApp(App):
     def _deep_scan_device(self, device: Device, screen: DeviceScreen) -> None:
         """Deep scan a single device."""
         async def do_deep():
-            screen.log_action("[#00aaff]Starting deep scan...[/]")
+            screen.log_action(f"[#00aaff]{t('starting_deep_scan')}[/]")
             try:
                 from core.scanner import nmap_scan
                 results = await nmap_scan(device.ip, scan_type="deep")
@@ -261,71 +258,72 @@ class NetScannerApp(App):
                 check_vulnerabilities(device)
 
                 screen.load_device(device)
-                screen.log_action("[bold #00ff00]Deep scan complete![/]")
+                screen.log_action(f"[bold #00ff00]{t('deep_scan_complete')}[/]")
             except Exception as e:
-                screen.log_action(f"[#ff0000]Error: {e}[/]")
+                screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
         asyncio.create_task(do_deep())
 
     def _check_device_creds(self, device: Device, screen: DeviceScreen) -> None:
         """Check credentials for a device."""
         async def do_check():
-            screen.log_action("[#00aaff]Checking default credentials...[/]")
+            screen.log_action(f"[#00aaff]{t('checking_creds')}[/]")
             try:
                 from core.cred_checker import check_credentials
                 results = await check_credentials(device)
                 screen.load_device(device)
                 success = sum(1 for c in results if c.success)
                 screen.log_action(
-                    f"[bold #00ff00]Credential check complete! "
-                    f"{success} successful logins found.[/]"
+                    f"[bold #00ff00]{t('cred_check_complete', count=success)}[/]"
                 )
             except Exception as e:
-                screen.log_action(f"[#ff0000]Error: {e}[/]")
+                screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
         asyncio.create_task(do_check())
 
     def _grab_frame(self, device: Device, screen: DeviceScreen) -> None:
         """Capture a frame from camera."""
         async def do_grab():
-            screen.log_action("[#00aaff]Attempting to capture frame...[/]")
+            screen.log_action(f"[#00aaff]{t('capturing_frame')}[/]")
             try:
                 from core.camera_analyzer import capture_snapshot
                 path = await capture_snapshot(device)
                 if path:
-                    screen.log_action(f"[bold #00ff00]Frame saved to: {path}[/]")
+                    screen.log_action(f"[bold #00ff00]{t('frame_saved', path=path)}[/]")
                 else:
-                    screen.log_action("[#ffaa00]Could not capture frame.[/]")
+                    screen.log_action(f"[#ffaa00]{t('frame_failed')}[/]")
                 screen.load_device(device)
             except Exception as e:
-                screen.log_action(f"[#ff0000]Error: {e}[/]")
+                screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
         asyncio.create_task(do_grab())
 
     def _exploit_device(self, device: Device, screen: DeviceScreen) -> None:
         """Search and suggest MSF exploits for device."""
         async def do_exploit():
-            screen.log_action("[#ff0000]Searching Metasploit modules...[/]")
+            screen.log_action(f"[#ff0000]{t('searching_msf')}[/]")
             try:
                 from core.msf_integration import msf_client, get_suggested_modules
 
                 modules = get_suggested_modules(device)
                 if modules:
-                    screen.log_action(f"[bold #ffaa00]Found {len(modules)} MSF modules:[/]")
+                    screen.log_action(
+                        f"[bold #ffaa00]{t('found_msf_modules', count=len(modules))}[/]"
+                    )
                     for mod in modules:
                         screen.log_action(
                             f"  [#00aaff]{mod['module']}[/] — {mod['description']}"
                         )
                     screen.log_action(
-                        "\n[bold #ff0000]⚠ To run exploits, use msfconsole manually.[/]"
-                        "\n[#888]MSF RPC integration requires msfrpcd running.[/]"
+                        f"\n[bold #ff0000]⚠ {t('msf_manual_note')}[/]"
+                        f"\n[#888]MSF RPC integration requires msfrpcd running.[/]"
                     )
                 else:
-                    screen.log_action("[#888]No matching MSF modules found.[/]")
+                    screen.log_action(f"[#888]{t('no_msf_modules')}[/]")
 
                 # Also search by CVE in MSF
                 if device.vulnerabilities and msf_client.is_running():
-                    screen.log_action("\n[#00aaff]Searching by CVE in MSF...[/]")
+                    screen.log_action(f"\n[#00aaff]{t('searching_msf')}[/]")
                     found = msf_client.search_exploits(device)
                     if found:
                         for f in found:
@@ -333,19 +331,21 @@ class NetScannerApp(App):
                                 f"  [#ff6600]{f['fullname']}[/] — {f['description'][:80]}"
                             )
             except Exception as e:
-                screen.log_action(f"[#ff0000]Error: {e}[/]")
+                screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
         asyncio.create_task(do_exploit())
 
     def _find_poc(self, device: Device, screen: DeviceScreen) -> None:
         """Find PoC exploits for device."""
         async def do_find():
-            screen.log_action("[#00aaff]Searching for PoC exploits...[/]")
+            screen.log_action(f"[#00aaff]{t('searching_poc')}[/]")
             try:
                 from core.exploit_finder import find_exploits
                 results = await find_exploits(device)
                 if results:
-                    screen.log_action(f"[bold #ffaa00]Found {len(results)} exploits:[/]")
+                    screen.log_action(
+                        f"[bold #ffaa00]{t('found_exploits', count=len(results))}[/]"
+                    )
                     for r in results:
                         stars = f" ★{r['stars']}" if r.get('stars') else ""
                         screen.log_action(
@@ -353,16 +353,16 @@ class NetScannerApp(App):
                             f"    {r['url']}"
                         )
                 else:
-                    screen.log_action("[#888]No public exploits found.[/]")
+                    screen.log_action(f"[#888]{t('no_exploits')}[/]")
             except Exception as e:
-                screen.log_action(f"[#ff0000]Error: {e}[/]")
+                screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
         asyncio.create_task(do_find())
 
     def _shodan_lookup(self, device: Device, screen: DeviceScreen) -> None:
         """Look up device on Shodan."""
         async def do_lookup():
-            screen.log_action("[#00aaff]Querying Shodan...[/]")
+            screen.log_action(f"[#00aaff]{t('querying_shodan')}[/]")
             try:
                 from core.external_apis import shodan_lookup
                 result = await shodan_lookup(device.ip)
@@ -370,7 +370,7 @@ class NetScannerApp(App):
                     if "message" in result:
                         screen.log_action(f"[#888]{result['message']}[/]")
                     else:
-                        screen.log_action("[bold #00ff00]Shodan results:[/]")
+                        screen.log_action(f"[bold #00ff00]{t('shodan_results')}[/]")
                         screen.log_action(f"  Org: {result.get('org', 'N/A')}")
                         screen.log_action(f"  OS: {result.get('os', 'N/A')}")
                         screen.log_action(f"  Country: {result.get('country', 'N/A')}")
@@ -379,19 +379,16 @@ class NetScannerApp(App):
                         if vulns:
                             screen.log_action(f"  [#ff0000]Vulns: {', '.join(vulns[:10])}[/]")
                 else:
-                    screen.log_action(
-                        "[#ffaa00]Shodan API key not configured. "
-                        "Set it in data/api_keys.json[/]"
-                    )
+                    screen.log_action(f"[#ffaa00]{t('shodan_no_key')}[/]")
             except Exception as e:
-                screen.log_action(f"[#ff0000]Error: {e}[/]")
+                screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
         asyncio.create_task(do_lookup())
 
     def _export_report(self, format: str) -> None:
         """Export scan results."""
         if not self._devices:
-            self.notify("No data to export.", severity="warning")
+            self.notify(t("no_data_export"), severity="warning")
             return
 
         try:
@@ -406,6 +403,10 @@ class NetScannerApp(App):
             else:
                 path = generate_json_report(self._devices)
 
-            self.notify(f"Report saved: {path}", title="Export Complete", timeout=10)
+            self.notify(
+                t("export_complete", path=path),
+                title=t("export_complete_title"),
+                timeout=10,
+            )
         except Exception as e:
-            self.notify(f"Export failed: {e}", severity="error")
+            self.notify(t("export_failed", error=str(e)), severity="error")

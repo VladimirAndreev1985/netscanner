@@ -10,6 +10,7 @@ Usage:
     sudo netscanner --update-cve            Update CVE database
     sudo netscanner --update                Update all (CVE + MSF)
     sudo netscanner --scan 192.168.1.0/24   Quick scan without TUI
+    sudo netscanner --lang ru               Set language (en/ru)
     sudo netscanner --help                  Show help
 """
 
@@ -41,8 +42,9 @@ BANNER = """
 def check_root():
     """Check if running as root (required for raw sockets)."""
     if os.geteuid() != 0:
-        print("\033[91m[!] NetScanner requires root privileges for network scanning.\033[0m")
-        print("\033[93m    Run: sudo netscanner\033[0m")
+        from core.i18n import t
+        print(f"\033[91m[!] {t('cli_requires_root')}\033[0m")
+        print(f"\033[93m    {t('cli_run_sudo')}\033[0m")
         sys.exit(1)
 
 
@@ -58,8 +60,9 @@ def setup_logging(verbose: bool = False):
 
 def cmd_check_deps():
     """Check and display dependency status."""
+    from core.i18n import t
     print(BANNER)
-    print("\033[92m[*] Checking dependencies...\033[0m\n")
+    print(f"\033[92m[*] {t('cli_checking_deps')}\033[0m\n")
 
     try:
         from core.dep_manager import print_status
@@ -71,19 +74,20 @@ def cmd_check_deps():
 
 def cmd_update_cve():
     """Update CVE database."""
+    from core.i18n import t
     print(BANNER)
-    print("\033[92m[*] Updating CVE database...\033[0m\n")
+    print(f"\033[92m[*] {t('cli_updating_cve')}\033[0m\n")
 
     try:
         from core.cve_updater import update_cve_database
         result = update_cve_database(
             progress_callback=lambda msg: print(f"  \033[96m{msg}\033[0m")
         )
-        print(f"\n\033[92m[+] CVE update complete!\033[0m")
-        print(f"    New CVEs: {result['new']}")
-        print(f"    Total CVEs: {result['total']}")
+        print(f"\n\033[92m[+] {t('cli_update_complete')}\033[0m")
+        print(f"    {t('cli_new_cves', count=result['new'])}")
+        print(f"    {t('cli_total_cves', count=result['total'])}")
     except Exception as e:
-        print(f"\033[91m[!] CVE update failed: {e}\033[0m")
+        print(f"\033[91m[!] {t('error')}: {e}\033[0m")
 
 
 def cmd_update_all():
@@ -111,22 +115,23 @@ def cmd_update_all():
 
 def cmd_quick_scan(target: str):
     """Run a quick scan without TUI and print results."""
+    from core.i18n import t
     print(BANNER)
-    print(f"\033[92m[*] Quick scanning: {target}\033[0m\n")
+    print(f"\033[92m[*] {t('cli_quick_scan', target=target)}\033[0m\n")
 
     async def do_scan():
         from core.scanner import full_scan
         from core.fingerprint import fingerprint_all
         from core.vuln_checker import check_all_devices
 
-        print("\033[96m  [1/3] Network discovery...\033[0m")
+        print(f"\033[96m  [1/3] {t('cli_network_discovery')}\033[0m")
         devices = await full_scan(target, scan_type="quick")
-        print(f"\033[92m  Found {len(devices)} hosts\033[0m")
+        print(f"\033[92m  {t('cli_found_hosts', count=len(devices))}\033[0m")
 
-        print("\033[96m  [2/3] Fingerprinting...\033[0m")
+        print(f"\033[96m  [2/3] {t('fingerprinting')}\033[0m")
         devices = await fingerprint_all(devices)
 
-        print("\033[96m  [3/3] CVE matching...\033[0m")
+        print(f"\033[96m  [3/3] {t('cli_cve_matching')}\033[0m")
         devices = check_all_devices(devices)
 
         print(f"\n\033[92m{'═' * 70}\033[0m")
@@ -163,28 +168,30 @@ def cmd_quick_scan(target: str):
             )
 
         print(f"\033[92m{'═' * 70}\033[0m")
-        print(f"\n\033[92mTotal: {len(devices)}\033[0m | "
-              f"\033[93mCameras: {sum(1 for d in devices if d.is_camera)}\033[0m | "
-              f"\033[91mVulnerable: {sum(1 for d in devices if d.is_vulnerable)}\033[0m | "
-              f"\033[91mCompromised: {sum(1 for d in devices if d.has_default_creds)}\033[0m")
+        print(f"\n\033[92m{t('total')}: {len(devices)}\033[0m | "
+              f"\033[93m{t('cameras')}: {sum(1 for d in devices if d.is_camera)}\033[0m | "
+              f"\033[91m{t('vulnerable')}: {sum(1 for d in devices if d.is_vulnerable)}\033[0m | "
+              f"\033[91m{t('compromised')}: {sum(1 for d in devices if d.has_default_creds)}\033[0m")
 
         # Save JSON report
         from core.report_generator import generate_json_report
         path = generate_json_report(devices)
-        print(f"\n\033[96m[*] Results saved to: {path}\033[0m")
+        print(f"\n\033[96m[*] {t('cli_results_saved', path=path)}\033[0m")
 
     asyncio.run(do_scan())
 
 
 def cmd_launch_tui():
     """Launch the TUI application."""
+    from core.i18n import t
+
     # Check for critical dependencies before launching TUI
     try:
         from core.dep_manager import get_missing_critical
         missing = get_missing_critical()
         if missing:
-            print(f"\033[91m[!] Missing critical dependencies: {', '.join(missing)}\033[0m")
-            print("\033[93m    Run: sudo bash install.sh\033[0m")
+            print(f"\033[91m[!] {t('cli_missing_deps', deps=', '.join(missing))}\033[0m")
+            print(f"\033[93m    {t('cli_run_install')}\033[0m")
             sys.exit(1)
     except ImportError:
         pass
@@ -193,7 +200,7 @@ def cmd_launch_tui():
     try:
         from core.cve_updater import needs_update
         if needs_update(max_age_hours=168):  # 7 days
-            print("\033[93m[*] CVE database is outdated. Consider: sudo netscanner --update-cve\033[0m")
+            print(f"\033[93m[*] {t('cli_cve_outdated')}\033[0m")
     except ImportError:
         pass
 
@@ -214,6 +221,7 @@ Examples:
   sudo netscanner --check-deps            Check installed tools
   sudo netscanner --update-cve            Update vulnerability database
   sudo netscanner --update                Update all databases
+  sudo netscanner --lang ru               Set language to Russian
         """,
     )
 
@@ -225,11 +233,19 @@ Examples:
                         help="Update all databases (CVE + MSF + Exploit-DB)")
     parser.add_argument("--scan", metavar="TARGET",
                         help="Quick scan target (IP/subnet) without TUI")
+    parser.add_argument("--lang", metavar="LANG", choices=["en", "ru"],
+                        help="Set interface language (en/ru)")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Enable verbose logging")
 
     args = parser.parse_args()
     setup_logging(args.verbose)
+
+    # Handle language setting
+    from core.i18n import load_language, set_lang
+    load_language()
+    if args.lang:
+        set_lang(args.lang)
 
     if args.check_deps:
         cmd_check_deps()

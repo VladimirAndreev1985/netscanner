@@ -7,6 +7,7 @@ from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual.message import Message
 
 from core.device import Device
+from core.i18n import t
 
 
 class GalleryScreen(Screen):
@@ -24,9 +25,9 @@ class GalleryScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #00ff00] Camera Gallery [/] │ "
-            "[#8b949e]↑↓[/] Navigate │ [#8b949e]Enter[/] Details │ "
-            "[#8b949e]B[/] Back",
+            f"[bold #00ff00] {t('camera_gallery')} [/] │ "
+            f"[#8b949e]↑↓[/] {t('navigate')} │ [#8b949e]Enter[/] {t('device_details')} │ "
+            f"[#8b949e]B[/] {t('back')}",
             id="header",
         )
 
@@ -34,11 +35,11 @@ class GalleryScreen(Screen):
             yield Static("", id="gallery-content")
 
         with Horizontal():
-            yield Button("Capture All", id="capture-all", classes="action-btn")
-            yield Button("Back", id="gallery-back", classes="action-btn")
+            yield Button(t("capture_all"), id="capture-all", classes="action-btn")
+            yield Button(t("back"), id="gallery-back", classes="action-btn")
 
         yield Static(
-            " [#8b949e]Gallery shows cameras with accessible streams or captured frames[/]",
+            f" [#8b949e]{t('footer_gallery')}[/]",
             id="footer",
         )
 
@@ -51,21 +52,23 @@ class GalleryScreen(Screen):
         """Render camera gallery as text-based cards."""
         if not self._devices:
             self.query_one("#gallery-content", Static).update(
-                "[#888]No cameras found. Run a scan first.[/]"
+                f"[#888]{t('no_cameras')}[/]"
             )
             return
 
+        na = t("not_available")
         lines = []
         for i, dev in enumerate(self._devices):
-            # Camera card
             border = "═" * 60
             risk_color = {
                 "critical": "#ff0000", "high": "#ff6600",
                 "medium": "#ffaa00", "low": "#00aaff", "info": "#888888"
             }.get(dev.risk_level, "#888")
 
-            screenshot_indicator = "[bold #00ff00]◉ Frame captured[/]" if dev.screenshots \
-                else "[#888]○ No frame[/]"
+            screenshot_indicator = (
+                f"[bold #00ff00]◉ {t('frame_captured')}[/]" if dev.screenshots
+                else f"[#888]○ {t('no_frame')}[/]"
+            )
 
             creds_str = ""
             for c in dev.default_creds:
@@ -93,21 +96,21 @@ class GalleryScreen(Screen):
                 f"[bold]{dev.ip}[/]  {screenshot_indicator}\n"
                 f"  [#00ff00]Brand:[/] {dev.brand or 'Unknown'}  "
                 f"[#00ff00]Model:[/] {dev.model or 'Unknown'}  "
-                f"[#00ff00]FW:[/] {dev.firmware_version or 'N/A'}\n"
-                f"  [#00ff00]MAC:[/] {dev.mac or 'N/A'}  "
-                f"[#00ff00]Vendor:[/] {dev.vendor or 'N/A'}\n"
+                f"[#00ff00]FW:[/] {dev.firmware_version or na}\n"
+                f"  [#00ff00]MAC:[/] {dev.mac or na}  "
+                f"[#00ff00]Vendor:[/] {dev.vendor or na}\n"
                 f"  [#00ff00]Risk:[/] [{risk_color}]{dev.risk_score:.1f}/10 "
                 f"({dev.risk_level})[/]{vuln_str}\n"
-                f"  [#00ff00]Web:[/] {dev.web_interface or 'N/A'}"
+                f"  [#00ff00]Web:[/] {dev.web_interface or na}"
                 f"{rtsp_str}"
             )
             if creds_str:
-                card += f"\n  [bold #ff0000]DEFAULT CREDS:[/] {creds_str}"
+                card += f"\n  [bold #ff0000]{t('default_creds_label')}:[/] {creds_str}"
 
             lines.append(card)
 
         lines.append(f"[#30363d]{'═' * 60}[/]")
-        lines.append(f"\n[bold #00ff00]Total cameras: {len(self._devices)}[/]")
+        lines.append(f"\n[bold #00ff00]{t('total_cameras', count=len(self._devices))}[/]")
 
         self.query_one("#gallery-content", Static).update("\n".join(lines))
 

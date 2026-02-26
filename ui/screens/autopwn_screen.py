@@ -6,6 +6,8 @@ from textual.widgets import Static, Button, RichLog
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
 
+from core.i18n import t
+
 
 class AutoPwnScreen(Screen):
     """Screen for running and monitoring auto-pwn operations."""
@@ -31,47 +33,47 @@ class AutoPwnScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #00ff00] Auto-Pwn [/] │ "
-            "[#ff0000]Automated Penetration Testing Pipeline[/]",
+            f"[bold #00ff00] {t('autopwn_title')} [/] │ "
+            f"[#ff0000]{t('autopwn_subtitle')}[/]",
             id="header",
         )
 
         with Vertical(id="autopwn-container"):
-            yield Static("[bold #00ff00]Mode Selection[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('mode_selection')}[/]", classes="section-title")
             with Horizontal(id="pwn-mode-select"):
-                yield Button("Passive", id="pwn-passive",
+                yield Button(t("passive"), id="pwn-passive",
                              classes="mode-btn passive")
-                yield Button("Normal", id="pwn-normal",
+                yield Button(t("normal"), id="pwn-normal",
                              classes="mode-btn normal selected")
-                yield Button("Aggressive", id="pwn-aggressive",
+                yield Button(t("aggressive"), id="pwn-aggressive",
                              classes="mode-btn aggressive")
 
             yield Static("", id="pwn-mode-desc")
 
             with Horizontal(id="pwn-stats"):
-                yield Static("Found: [bold]0[/]", id="pwn-found",
+                yield Static(f"{t('found')}: [bold]0[/]", id="pwn-found",
                              classes="stat-item stat-total")
-                yield Static("Cameras: [bold]0[/]", id="pwn-cameras",
+                yield Static(f"{t('cameras')}: [bold]0[/]", id="pwn-cameras",
                              classes="stat-item stat-cameras")
-                yield Static("Vulnerable: [bold]0[/]", id="pwn-vuln",
+                yield Static(f"{t('vulnerable')}: [bold]0[/]", id="pwn-vuln",
                              classes="stat-item stat-vulnerable")
-                yield Static("Compromised: [bold]0[/]", id="pwn-comp",
+                yield Static(f"{t('compromised')}: [bold]0[/]", id="pwn-comp",
                              classes="stat-item stat-compromised")
 
             yield RichLog(id="pwn-log", wrap=True, max_lines=500)
 
             with Horizontal():
-                yield Button("Generate HTML Report", id="gen-html",
+                yield Button(t("generate_html"), id="gen-html",
                              classes="action-btn")
-                yield Button("Generate PDF Report", id="gen-pdf",
+                yield Button(t("generate_pdf"), id="gen-pdf",
                              classes="action-btn")
-                yield Button("View Results", id="view-results",
+                yield Button(t("view_results"), id="view-results",
                              classes="action-btn")
-                yield Button("Back", id="pwn-back",
+                yield Button(t("back"), id="pwn-back",
                              classes="action-btn")
 
         yield Static(
-            " [#8b949e]Auto-Pwn: Discovery → Fingerprint → CVE → Creds → Exploit → Report[/]",
+            f" [#8b949e]{t('autopwn_pipeline')}[/]",
             id="footer",
         )
 
@@ -103,12 +105,9 @@ class AutoPwnScreen(Screen):
 
     def _update_mode_desc(self) -> None:
         descs = {
-            "passive": "[#00aaff]Passive:[/] Discovery + fingerprinting + CVE matching. "
-                       "No active exploitation or credential testing.",
-            "normal": "[#ffaa00]Normal:[/] Discovery + fingerprinting + CVE + "
-                      "default credential testing + backdoor checks.",
-            "aggressive": "[#ff0000]Aggressive:[/] Full pipeline including "
-                          "Metasploit exploit matching. Requires user confirmation before exploitation.",
+            "passive": f"[#00aaff]{t('mode_passive_desc')}[/]",
+            "normal": f"[#ffaa00]{t('mode_normal_autopwn_desc')}[/]",
+            "aggressive": f"[#ff0000]{t('mode_aggressive_desc')}[/]",
         }
         self.query_one("#pwn-mode-desc", Static).update(
             descs.get(self._mode, "")
@@ -134,16 +133,16 @@ class AutoPwnScreen(Screen):
         """Update statistics display."""
         try:
             self.query_one("#pwn-found", Static).update(
-                f"Found: [bold #00aaff]{found}[/]"
+                f"{t('found')}: [bold #00aaff]{found}[/]"
             )
             self.query_one("#pwn-cameras", Static).update(
-                f"Cameras: [bold #ff6600]{cameras}[/]"
+                f"{t('cameras')}: [bold #ff6600]{cameras}[/]"
             )
             self.query_one("#pwn-vuln", Static).update(
-                f"Vulnerable: [bold #ff0000]{vulnerable}[/]"
+                f"{t('vulnerable')}: [bold #ff0000]{vulnerable}[/]"
             )
             self.query_one("#pwn-comp", Static).update(
-                f"Compromised: [bold #ff4444]{compromised}[/]"
+                f"{t('compromised')}: [bold #ff4444]{compromised}[/]"
             )
         except Exception:
             pass

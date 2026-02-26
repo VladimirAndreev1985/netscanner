@@ -7,6 +7,7 @@ from textual.containers import Vertical, Horizontal
 from textual.message import Message
 
 from core.device import Device
+from core.i18n import t
 from ui.widgets.device_table import DeviceTable
 from ui.widgets.filter_bar import FilterBar
 
@@ -33,9 +34,9 @@ class ResultsScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #00ff00] Results [/] │ "
-            "[#8b949e]↑↓[/] Navigate │ [#8b949e]Enter[/] Details │ "
-            "[#8b949e]E[/] Export │ [#8b949e]B[/] Back",
+            f"[bold #00ff00] {t('results')} [/] │ "
+            f"[#8b949e]↑↓[/] {t('navigate')} │ [#8b949e]Enter[/] {t('device_details')} │ "
+            f"[#8b949e]E[/] {t('export')} │ [#8b949e]B[/] {t('back')}",
             id="header",
         )
 
@@ -44,20 +45,19 @@ class ResultsScreen(Screen):
             yield DeviceTable(id="device-table")
 
             with Horizontal(id="stats-bar"):
-                yield Static("Total: 0", id="stat-total", classes="stat-item stat-total")
-                yield Static("Cameras: 0", id="stat-cameras", classes="stat-item stat-cameras")
-                yield Static("Vulnerable: 0", id="stat-vuln", classes="stat-item stat-vulnerable")
-                yield Static("Compromised: 0", id="stat-comp", classes="stat-item stat-compromised")
+                yield Static(f"{t('total')}: 0", id="stat-total", classes="stat-item stat-total")
+                yield Static(f"{t('cameras')}: 0", id="stat-cameras", classes="stat-item stat-cameras")
+                yield Static(f"{t('vulnerable')}: 0", id="stat-vuln", classes="stat-item stat-vulnerable")
+                yield Static(f"{t('compromised')}: 0", id="stat-comp", classes="stat-item stat-compromised")
 
             with Horizontal():
-                yield Button("Export HTML", id="export-html", classes="action-btn")
-                yield Button("Export PDF", id="export-pdf", classes="action-btn")
-                yield Button("Export JSON", id="export-json", classes="action-btn")
-                yield Button("Back to Scan", id="back-btn", classes="action-btn")
+                yield Button(t("export_html"), id="export-html", classes="action-btn")
+                yield Button(t("export_pdf"), id="export-pdf", classes="action-btn")
+                yield Button(t("export_json"), id="export-json", classes="action-btn")
+                yield Button(t("back_to_scan"), id="back-btn", classes="action-btn")
 
         yield Static(
-            " [#8b949e]F[/]: Filter │ [#8b949e]S[/]: Sort │ "
-            "[#8b949e]Enter[/]: Device Details │ [#8b949e]R[/]: Rescan",
+            f" [#8b949e]{t('footer_results')}[/]",
             id="footer",
         )
 
@@ -93,10 +93,10 @@ class ResultsScreen(Screen):
         vulnerable = sum(1 for d in self._devices if d.is_vulnerable)
         compromised = sum(1 for d in self._devices if d.has_default_creds)
 
-        self.query_one("#stat-total", Static).update(f"Total: {total}")
-        self.query_one("#stat-cameras", Static).update(f"Cameras: {cameras}")
-        self.query_one("#stat-vuln", Static).update(f"Vulnerable: {vulnerable}")
-        self.query_one("#stat-comp", Static).update(f"Compromised: {compromised}")
+        self.query_one("#stat-total", Static).update(f"{t('total')}: {total}")
+        self.query_one("#stat-cameras", Static).update(f"{t('cameras')}: {cameras}")
+        self.query_one("#stat-vuln", Static).update(f"{t('vulnerable')}: {vulnerable}")
+        self.query_one("#stat-comp", Static).update(f"{t('compromised')}: {compromised}")
 
     def on_filter_bar_filter_changed(self, event: FilterBar.FilterChanged) -> None:
         self._apply_filter(event.filter_type)

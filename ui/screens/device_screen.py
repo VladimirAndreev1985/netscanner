@@ -7,6 +7,7 @@ from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual.message import Message
 
 from core.device import Device
+from core.i18n import t
 
 
 class DeviceScreen(Screen):
@@ -25,39 +26,40 @@ class DeviceScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #00ff00] Device Detail [/] │ "
-            "[#8b949e]B[/] Back │ [#8b949e]D[/] Deep Scan │ [#8b949e]C[/] Check Creds",
+            f"[bold #00ff00] {t('device_detail')} [/] │ "
+            f"[#8b949e]B[/] {t('back')} │ [#8b949e]D[/] {t('deep_scan')} │ "
+            f"[#8b949e]C[/] {t('check_creds')}",
             id="header",
         )
 
         with ScrollableContainer(id="detail-container"):
             yield Static("", id="device-info")
-            yield Static("[bold #00ff00]Open Ports & Services[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('open_ports')}[/]", classes="section-title")
             yield Static("", id="ports-info")
-            yield Static("[bold #00ff00]Vulnerabilities[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('vulnerabilities')}[/]", classes="section-title")
             yield Static("", id="vuln-info")
-            yield Static("[bold #00ff00]Credentials[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('credentials')}[/]", classes="section-title")
             yield Static("", id="creds-info")
-            yield Static("[bold #00ff00]RTSP Streams[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('rtsp_streams')}[/]", classes="section-title")
             yield Static("", id="rtsp-info")
-            yield Static("[bold #00ff00]ONVIF Info[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('onvif_info')}[/]", classes="section-title")
             yield Static("", id="onvif-info")
-            yield Static("[bold #00ff00]Additional Info[/]", classes="section-title")
+            yield Static(f"[bold #00ff00]{t('additional_info')}[/]", classes="section-title")
             yield Static("", id="extra-info")
 
             with Horizontal(id="action-buttons"):
-                yield Button("Deep Scan", id="btn-deepscan", classes="action-btn")
-                yield Button("Check Creds", id="btn-checkcreds", classes="action-btn")
-                yield Button("Grab Frame", id="btn-grabframe", classes="action-btn")
-                yield Button("Exploit (MSF)", id="btn-exploit", classes="action-btn danger")
-                yield Button("Find PoC", id="btn-findpoc", classes="action-btn")
-                yield Button("Shodan", id="btn-shodan", classes="action-btn")
-                yield Button("Back", id="btn-back", classes="action-btn")
+                yield Button(t("deep_scan"), id="btn-deepscan", classes="action-btn")
+                yield Button(t("check_creds"), id="btn-checkcreds", classes="action-btn")
+                yield Button(t("grab_frame"), id="btn-grabframe", classes="action-btn")
+                yield Button(t("exploit_msf"), id="btn-exploit", classes="action-btn danger")
+                yield Button(t("find_poc"), id="btn-findpoc", classes="action-btn")
+                yield Button(t("shodan"), id="btn-shodan", classes="action-btn")
+                yield Button(t("back"), id="btn-back", classes="action-btn")
 
             yield RichLog(id="action-log", wrap=True, max_lines=100)
 
         yield Static(
-            " [#8b949e]↑↓[/] Scroll │ [#8b949e]Enter[/] Action │ [#8b949e]B[/] Back",
+            f" [#8b949e]{t('footer_device')}[/]",
             id="footer",
         )
 
@@ -77,6 +79,7 @@ class DeviceScreen(Screen):
         if not dev:
             return
 
+        na = t("not_available")
         risk_color = {
             "critical": "#ff0000", "high": "#ff6600",
             "medium": "#ffaa00", "low": "#00aaff", "info": "#888888"
@@ -84,24 +87,24 @@ class DeviceScreen(Screen):
 
         info = (
             f"[bold #00ff00]IP:[/] {dev.ip}  "
-            f"[bold #00ff00]MAC:[/] {dev.mac or 'N/A'}  "
-            f"[bold #00ff00]Hostname:[/] {dev.hostname or 'N/A'}\n"
-            f"[bold #00ff00]Vendor:[/] {dev.vendor or 'N/A'}  "
-            f"[bold #00ff00]Brand:[/] {dev.brand or 'N/A'}  "
-            f"[bold #00ff00]Model:[/] {dev.model or 'N/A'}\n"
+            f"[bold #00ff00]MAC:[/] {dev.mac or na}  "
+            f"[bold #00ff00]Hostname:[/] {dev.hostname or na}\n"
+            f"[bold #00ff00]Vendor:[/] {dev.vendor or na}  "
+            f"[bold #00ff00]Brand:[/] {dev.brand or na}  "
+            f"[bold #00ff00]Model:[/] {dev.model or na}\n"
             f"[bold #00ff00]Type:[/] {dev.device_type}  "
-            f"[bold #00ff00]OS:[/] {dev.os_guess or 'N/A'}  "
-            f"[bold #00ff00]Firmware:[/] {dev.firmware_version or 'N/A'}\n"
+            f"[bold #00ff00]OS:[/] {dev.os_guess or na}  "
+            f"[bold #00ff00]Firmware:[/] {dev.firmware_version or na}\n"
             f"[bold #00ff00]Risk Score:[/] [{risk_color}]{dev.risk_score:.1f}/10 "
             f"({dev.risk_level.upper()})[/]  "
-            f"[bold #00ff00]Web:[/] {dev.web_interface or 'N/A'}"
+            f"[bold #00ff00]Web:[/] {dev.web_interface or na}"
         )
         self.query_one("#device-info", Static).update(info)
 
     def _render_ports(self) -> None:
         dev = self._device
         if not dev or not dev.open_ports:
-            self.query_one("#ports-info", Static).update("[#888]No open ports[/]")
+            self.query_one("#ports-info", Static).update(f"[#888]{t('no_open_ports')}[/]")
             return
 
         lines = []
@@ -118,7 +121,7 @@ class DeviceScreen(Screen):
     def _render_vulns(self) -> None:
         dev = self._device
         if not dev or not dev.vulnerabilities:
-            self.query_one("#vuln-info", Static).update("[#888]No vulnerabilities found[/]")
+            self.query_one("#vuln-info", Static).update(f"[#888]{t('no_vulns')}[/]")
             return
 
         lines = []
@@ -143,7 +146,7 @@ class DeviceScreen(Screen):
     def _render_creds(self) -> None:
         dev = self._device
         if not dev or not dev.default_creds:
-            self.query_one("#creds-info", Static).update("[#888]No credentials tested[/]")
+            self.query_one("#creds-info", Static).update(f"[#888]{t('no_creds_tested')}[/]")
             return
 
         lines = []
@@ -164,7 +167,7 @@ class DeviceScreen(Screen):
     def _render_rtsp(self) -> None:
         dev = self._device
         if not dev or not dev.rtsp_urls:
-            self.query_one("#rtsp-info", Static).update("[#888]No RTSP streams found[/]")
+            self.query_one("#rtsp-info", Static).update(f"[#888]{t('no_rtsp')}[/]")
             return
 
         lines = [f"  [#00aaff]{url}[/]" for url in dev.rtsp_urls]
@@ -173,7 +176,7 @@ class DeviceScreen(Screen):
     def _render_onvif(self) -> None:
         dev = self._device
         if not dev or not dev.onvif_info:
-            self.query_one("#onvif-info", Static).update("[#888]No ONVIF data[/]")
+            self.query_one("#onvif-info", Static).update(f"[#888]{t('no_onvif')}[/]")
             return
 
         lines = []
@@ -184,7 +187,7 @@ class DeviceScreen(Screen):
     def _render_extra(self) -> None:
         dev = self._device
         if not dev or not dev.extra_info:
-            self.query_one("#extra-info", Static).update("[#888]No additional info[/]")
+            self.query_one("#extra-info", Static).update(f"[#888]{t('no_extra')}[/]")
             return
 
         lines = []
