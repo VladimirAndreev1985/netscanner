@@ -108,7 +108,7 @@ class WiFiScreen(Screen):
                 f"[#888]{t('recon_after_connect')}[/]",
                 id="recon-info",
             )
-            yield RichLog(id="recon-log", wrap=True, max_lines=200)
+            yield RichLog(id="recon-log", wrap=True, max_lines=200, markup=True)
 
             # ═══ Proceed button ═══
             yield Button(
