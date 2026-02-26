@@ -96,7 +96,7 @@ Three modes: **Passive** / **Normal** / **Aggressive**
 
 ```bash
 # Clone or copy to Kali
-git clone https://github.com/YOUR_USERNAME/netscanner.git /opt/netscanner
+git clone https://github.com/VladimirAndreev1985/netscanner.git /opt/netscanner
 
 # Install
 cd /opt/netscanner
