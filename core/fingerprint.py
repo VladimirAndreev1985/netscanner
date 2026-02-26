@@ -13,7 +13,12 @@ from core.mac_lookup import is_camera_vendor, is_iot_vendor, get_brand_from_mac
 logger = logging.getLogger("netscanner.fingerprint")
 
 # Port-based device type hints
-CAMERA_INDICATOR_PORTS = {554, 8000, 8001, 37777, 37778, 34567, 34599, 8899, 9000}
+# Strong: protocols that are almost exclusively used by cameras/NVRs
+CAMERA_STRONG_PORTS = {554, 37777, 37778, 34567, 34599, 8899}
+# Weak: commonly used by cameras but also by other devices (web servers, apps)
+CAMERA_WEAK_PORTS = {8000, 8001, 9000}
+# Combined for backward compat
+CAMERA_INDICATOR_PORTS = CAMERA_STRONG_PORTS | CAMERA_WEAK_PORTS
 IOT_INDICATOR_PORTS = {1883, 8883, 5683, 502, 47808, 6668}
 PRINTER_INDICATOR_PORTS = {9100, 631}
 ROUTER_INDICATOR_PORTS = {53}
@@ -109,16 +114,17 @@ def _detect_type_from_ports(device: Device) -> None:
     """Detect device type from open ports."""
     ports = set(device.open_ports)
 
-    if ports & CAMERA_INDICATOR_PORTS:
+    # Strong camera ports → definitely camera
+    if ports & CAMERA_STRONG_PORTS:
         device.device_type = "camera"
+    # Weak camera ports alone → only "possible_camera", needs confirmation
+    # via HTTP fingerprint, MAC vendor, or service banners
+    elif ports & CAMERA_WEAK_PORTS:
+        device.device_type = "possible_camera"
     elif ports & IOT_INDICATOR_PORTS:
         device.device_type = "iot"
     elif ports & PRINTER_INDICATOR_PORTS:
         device.device_type = "printer"
-
-    # RTSP port is strong camera indicator
-    if 554 in ports:
-        device.device_type = "camera"
 
 
 async def _http_fingerprint(device: Device) -> None:
@@ -221,8 +227,9 @@ def _refine_device_type(device: Device) -> None:
     """Final device type refinement based on all collected evidence."""
     # MAC-based refinement
     if device.mac:
-        if is_camera_vendor(device.mac) and device.device_type == "unknown":
-            device.device_type = "camera"
+        if is_camera_vendor(device.mac):
+            if device.device_type in ("unknown", "possible_camera"):
+                device.device_type = "camera"
         elif is_iot_vendor(device.mac) and device.device_type == "unknown":
             device.device_type = "iot"
 
@@ -243,12 +250,16 @@ def _refine_device_type(device: Device) -> None:
     # Router detection: has port 53 + common web ports
     ports = set(device.open_ports)
     if 53 in ports and ports & {80, 443, 8080}:
-        if device.device_type == "unknown":
+        if device.device_type in ("unknown", "possible_camera"):
             device.device_type = "router"
 
     # PC detection: RDP or SMB
-    if ports & {3389, 445, 135} and device.device_type == "unknown":
+    if ports & {3389, 445, 135} and device.device_type in ("unknown", "possible_camera"):
         device.device_type = "pc"
+
+    # Resolve "possible_camera" — if no evidence confirmed it, downgrade to "host"
+    if device.device_type == "possible_camera":
+        device.device_type = "host"
 
     # Default
     if not device.device_type:

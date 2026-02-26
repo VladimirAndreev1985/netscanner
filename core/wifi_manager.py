@@ -81,20 +81,36 @@ class ConnectionInfo:
 # Helper: run shell command
 # ═══════════════════════════════════════════════════════════════
 
-async def _run(cmd: list[str], timeout: int = 30) -> tuple[str, str, int]:
-    """Run command and return (stdout, stderr, returncode)."""
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\([A-Za-z]")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return _ANSI_RE.sub("", text)
+
+
+async def _run(cmd: list[str], timeout: int = 30,
+               new_session: bool = False) -> tuple[str, str, int]:
+    """Run command and return (stdout, stderr, returncode).
+
+    Args:
+        new_session: If True, start process in a new session to isolate
+                     it from the terminal (prevents ANSI leakage from
+                     tools like airmon-ng).
+    """
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            start_new_session=new_session,
         )
         stdout, stderr = await asyncio.wait_for(
             proc.communicate(), timeout=timeout
         )
         return (
-            stdout.decode("utf-8", errors="replace"),
-            stderr.decode("utf-8", errors="replace"),
+            _strip_ansi(stdout.decode("utf-8", errors="replace")),
+            _strip_ansi(stderr.decode("utf-8", errors="replace")),
             proc.returncode or 0,
         )
     except asyncio.TimeoutError:
@@ -299,14 +315,16 @@ async def scan_networks_deep(
     csv_file = f"{tmp_prefix}-01.csv"
 
     try:
-        # 1. Kill interfering processes
+        # 1. Kill interfering processes (new_session to isolate from TUI)
         log("Stopping interfering processes...")
-        await _run(["airmon-ng", "check", "kill"], timeout=10)
+        await _run(["airmon-ng", "check", "kill"], timeout=10, new_session=True)
         await asyncio.sleep(1)
 
         # 2. Start monitor mode
         log(f"Starting monitor mode on {adapter}...")
-        stdout, stderr, rc = await _run(["airmon-ng", "start", adapter], timeout=15)
+        stdout, stderr, rc = await _run(
+            ["airmon-ng", "start", adapter], timeout=15, new_session=True
+        )
         if rc != 0:
             log(f"Failed to start monitor mode: {stderr}")
             return []
@@ -321,7 +339,7 @@ async def scan_networks_deep(
 
         log(f"Monitor interface: {mon_iface}")
 
-        # 3. Run airodump-ng
+        # 3. Run airodump-ng (fully isolated from terminal)
         log(f"Scanning airwaves for {duration} seconds...")
         proc = await asyncio.create_subprocess_exec(
             "airodump-ng", mon_iface,
@@ -330,24 +348,27 @@ async def scan_networks_deep(
             "--write-interval", "1",
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
         )
 
         # Wait for scan duration
         await asyncio.sleep(duration)
 
-        # Kill airodump
+        # Kill airodump (use PGID to kill entire process group)
         try:
-            proc.terminate()
+            import signal as sig
+            os.killpg(os.getpgid(proc.pid), sig.SIGTERM)
             await asyncio.wait_for(proc.wait(), timeout=5)
         except Exception:
             try:
                 proc.kill()
+                await proc.wait()
             except Exception:
                 pass
 
         # 4. Stop monitor mode
         log("Stopping monitor mode...")
-        await _run(["airmon-ng", "stop", mon_iface], timeout=10)
+        await _run(["airmon-ng", "stop", mon_iface], timeout=10, new_session=True)
 
         # 5. Restart NetworkManager
         log("Restarting NetworkManager...")
@@ -364,7 +385,7 @@ async def scan_networks_deep(
         return []
     finally:
         # Cleanup: ensure monitor mode is stopped
-        await _run(["airmon-ng", "stop", mon_iface], timeout=5)
+        await _run(["airmon-ng", "stop", mon_iface], timeout=5, new_session=True)
         await _run(["systemctl", "restart", "NetworkManager"], timeout=10)
         # Clean temp files
         for suffix in ["-01.csv", "-01.kismet.csv", "-01.kismet.netxml",

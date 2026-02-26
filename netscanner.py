@@ -48,14 +48,29 @@ def check_root():
         sys.exit(1)
 
 
-def setup_logging(verbose: bool = False):
-    """Configure logging."""
+def setup_logging(verbose: bool = False, tui_mode: bool = False):
+    """Configure logging. In TUI mode, log to file to avoid corrupting display."""
     level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
+
+    if tui_mode:
+        # TUI mode: log to file only, NEVER to stderr (corrupts Textual display)
+        log_dir = os.path.join(PROJECT_DIR, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, "netscanner.log")
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+            datefmt="%H:%M:%S",
+            filename=log_file,
+            filemode="w",
+        )
+    else:
+        # CLI mode: log to stderr as usual
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+            datefmt="%H:%M:%S",
+        )
 
 
 def cmd_check_deps():
@@ -239,7 +254,10 @@ Examples:
                         help="Enable verbose logging")
 
     args = parser.parse_args()
-    setup_logging(args.verbose)
+
+    # Determine if we're launching TUI (no specific CLI action)
+    is_tui = not (args.check_deps or args.update_cve or args.update or args.scan)
+    setup_logging(args.verbose, tui_mode=is_tui)
 
     # Handle language setting
     from core.i18n import load_language, set_lang

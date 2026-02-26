@@ -16,7 +16,7 @@ class DeviceTable(DataTable):
         ("Type", 10),
         ("Brand", 12),
         ("Model", 14),
-        ("Ports", 20),
+        ("Ports / Services", 28),
         ("Risk", 6),
         ("Status", 12),
     ]
@@ -37,9 +37,23 @@ class DeviceTable(DataTable):
         self._devices = devices
 
         for dev in sorted(devices, key=lambda d: d.risk_score, reverse=True):
-            ports_str = ", ".join(str(p) for p in dev.open_ports[:6])
-            if len(dev.open_ports) > 6:
-                ports_str += f" (+{len(dev.open_ports) - 6})"
+            # Show port:service when service info is available (deep scan)
+            if dev.services:
+                port_parts = []
+                for p in dev.open_ports[:5]:
+                    svc = dev.services.get(p, {})
+                    name = svc.get("name", "")
+                    if name:
+                        port_parts.append(f"{p}/{name}")
+                    else:
+                        port_parts.append(str(p))
+                ports_str = ", ".join(port_parts)
+                if len(dev.open_ports) > 5:
+                    ports_str += f" (+{len(dev.open_ports) - 5})"
+            else:
+                ports_str = ", ".join(str(p) for p in dev.open_ports[:6])
+                if len(dev.open_ports) > 6:
+                    ports_str += f" (+{len(dev.open_ports) - 6})"
 
             risk_str = f"{dev.risk_score:.1f}"
 
