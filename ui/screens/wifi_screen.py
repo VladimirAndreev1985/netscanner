@@ -39,6 +39,7 @@ class WiFiScreen(Screen):
         self._clients = []
         self._internet_info = {}
         self._scanning = False
+        self._quick_scan_cache: dict[str, object] = {}  # BSSID -> WiFiNetwork from quick scan
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -216,6 +217,9 @@ class WiFiScreen(Screen):
         from core.wifi_manager import scan_networks
         self._networks = await scan_networks(self._selected_adapter)
 
+        # Cache quick scan results (WPS, vendor) for merging with deep scan later
+        self._quick_scan_cache = {n.bssid: n for n in self._networks}
+
         progress.update_progress(100, "")
         progress.complete("")
         self._populate_network_table()
@@ -239,12 +243,40 @@ class WiFiScreen(Screen):
         try:
             progress.update_progress(10, t("starting_monitor"))
 
+            def update_cb(networks, elapsed, total):
+                """Real-time table update callback during scan."""
+                try:
+                    # Merge WPS/vendor data from quick scan cache
+                    for net in networks:
+                        cached = self._quick_scan_cache.get(net.bssid)
+                        if cached:
+                            if cached.wps_enabled:
+                                net.wps_enabled = True
+                            if cached.router_vendor and not net.router_vendor:
+                                net.router_vendor = cached.router_vendor
+                    self._networks = networks
+                    self._populate_network_table()
+                    pct = 10 + int((elapsed / total) * 80)
+                    progress.update_progress(pct, f"Scanning... {elapsed}/{total}s — {len(networks)} networks")
+                except Exception:
+                    pass
+
             from core.wifi_manager import scan_networks_deep
             self._networks = await scan_networks_deep(
                 self._selected_adapter,
                 duration=20,
                 log_callback=log_cb,
+                update_callback=update_cb,
             )
+
+            # Final merge of WPS/vendor data from quick scan cache
+            for net in self._networks:
+                cached = self._quick_scan_cache.get(net.bssid)
+                if cached:
+                    if cached.wps_enabled:
+                        net.wps_enabled = True
+                    if cached.router_vendor and not net.router_vendor:
+                        net.router_vendor = cached.router_vendor
 
             progress.complete("")
             self._populate_network_table()

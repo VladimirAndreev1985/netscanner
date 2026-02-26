@@ -311,6 +311,7 @@ async def scan_networks_deep(
     adapter: str = "wlan0",
     duration: int = 20,
     log_callback=None,
+    update_callback=None,
 ) -> list[WiFiNetwork]:
     """Deep WiFi scan using airodump-ng — shows clients per network."""
 
@@ -364,11 +365,19 @@ async def scan_networks_deep(
             start_new_session=True,
         )
 
-        # Wait for scan duration with progress updates
+        # Wait for scan duration with progress updates and intermediate results
         for elapsed in range(duration):
             await asyncio.sleep(1)
             if log_callback and elapsed % 5 == 4:
                 log(f"Scanning... {elapsed + 1}/{duration}s")
+            # Send intermediate results every 3 seconds for real-time table updates
+            if update_callback and elapsed >= 3 and elapsed % 3 == 0:
+                try:
+                    intermediate = _parse_airodump_csv(csv_file, skip_vendor=True)
+                    if intermediate:
+                        update_callback(intermediate, elapsed + 1, duration)
+                except Exception:
+                    pass
 
         # Kill airodump (kill entire process group since it's in its own session)
         try:
@@ -419,10 +428,18 @@ async def scan_networks_deep(
                 pass
 
 
-def _parse_airodump_csv(csv_path: str) -> list[WiFiNetwork]:
-    """Parse airodump-ng CSV output into WiFiNetwork list."""
-    networks: dict[str, WiFiNetwork] = {}  # bssid -> network
-    client_map: dict[str, list[str]] = {}  # bssid -> [client MACs]
+def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNetwork]:
+    """Parse airodump-ng CSV output into WiFiNetwork list.
+
+    Finds sections by header text (BSSID / Station MAC) instead of
+    relying on blank-line splitting, which breaks across different
+    OS line-ending variants.
+
+    Args:
+        skip_vendor: skip MAC vendor lookup (faster for intermediate updates).
+    """
+    networks: dict[str, WiFiNetwork] = {}
+    client_map: dict[str, list[str]] = {}
 
     try:
         with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
@@ -430,27 +447,32 @@ def _parse_airodump_csv(csv_path: str) -> list[WiFiNetwork]:
     except FileNotFoundError:
         return []
 
-    # Airodump CSV has two sections separated by empty line:
-    # Section 1: APs (BSSID, First time seen, Last time seen, channel, Speed,
-    #   Privacy, Cipher, Authentication, Power, # beacons, # IV, LAN IP, ID-length, ESSID, Key)
-    # Section 2: Clients (Station MAC, First time seen, Last time seen, Power,
-    #   # packets, BSSID, Probed ESSIDs)
-    sections = content.split("\r\n\r\n")
-    if len(sections) < 1:
-        sections = content.split("\n\n")
+    # Normalize line endings
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
+    lines = content.splitlines()
+
+    # Find section boundaries by header text
+    ap_start = -1
+    client_start = -1
+    for i, line in enumerate(lines):
+        stripped = line.strip().lstrip("\ufeff")  # strip BOM
+        if ap_start < 0 and stripped.startswith("BSSID"):
+            ap_start = i + 1  # data starts after header
+        elif stripped.startswith("Station MAC"):
+            client_start = i + 1
 
     # Parse APs section
-    if sections:
-        ap_lines = sections[0].strip().splitlines()
-        # Skip header line
-        for line in ap_lines[1:]:
+    if ap_start >= 0:
+        ap_end = client_start - 1 if client_start > ap_start else len(lines)
+        for i in range(ap_start, ap_end):
+            line = lines[i]
             if not line.strip():
                 continue
             parts = [p.strip() for p in line.split(",")]
             if len(parts) < 14:
                 continue
 
-            bssid = parts[0].strip().upper()
+            bssid = parts[0].upper()
             if not re.match(r"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$", bssid):
                 continue
 
@@ -460,10 +482,8 @@ def _parse_airodump_csv(csv_path: str) -> list[WiFiNetwork]:
                 channel = 0
 
             speed = parts[4].strip()
-
-            privacy = parts[5].strip()  # WPA2, WPA, WEP, OPN
+            privacy = parts[5].strip()
             cipher = parts[6].strip()
-            auth = parts[7].strip()
 
             security = privacy
             if cipher:
@@ -479,26 +499,15 @@ def _parse_airodump_csv(csv_path: str) -> list[WiFiNetwork]:
             signal = max(0, min(100, int((power + 90) * (100 / 60))))
 
             try:
-                beacons = int(parts[9]) if parts[9].strip() else 0
-            except ValueError:
-                beacons = 0
-
-            try:
                 data = int(parts[10]) if parts[10].strip() else 0
             except ValueError:
                 data = 0
 
-            # ESSID is the last field(s)
             essid = parts[13].strip() if len(parts) > 13 else ""
-            hidden = not essid or essid == ""
+            hidden = not essid
 
-            # Detect frequency from channel
-            if channel <= 14:
-                frequency = "2.4 GHz"
-            else:
-                frequency = "5 GHz"
-
-            vendor = _vendor_from_mac(bssid)
+            frequency = "5 GHz" if channel > 14 else "2.4 GHz"
+            vendor = "" if skip_vendor else _vendor_from_mac(bssid)
 
             networks[bssid] = WiFiNetwork(
                 ssid=essid,
@@ -515,20 +524,20 @@ def _parse_airodump_csv(csv_path: str) -> list[WiFiNetwork]:
             client_map[bssid] = []
 
     # Parse Clients section
-    if len(sections) > 1:
-        client_lines = sections[1].strip().splitlines()
-        for line in client_lines[1:]:
+    if client_start >= 0:
+        for i in range(client_start, len(lines)):
+            line = lines[i]
             if not line.strip():
                 continue
             parts = [p.strip() for p in line.split(",")]
             if len(parts) < 6:
                 continue
 
-            station_mac = parts[0].strip().upper()
+            station_mac = parts[0].upper()
             if not re.match(r"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$", station_mac):
                 continue
 
-            assoc_bssid = parts[5].strip().upper() if len(parts) > 5 else ""
+            assoc_bssid = parts[5].upper()
             if assoc_bssid in client_map:
                 client_map[assoc_bssid].append(station_mac)
 
