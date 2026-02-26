@@ -308,9 +308,9 @@ class NetScannerApp(App):
                 from core.auto_pwn import auto_pwn
                 result = await auto_pwn(
                     target, mode=screen.mode,
-                    log_callback=lambda msg: screen.log(msg),
+                    log_callback=lambda msg: screen.write_log(msg),
                     progress_callback=lambda step, total, desc:
-                        screen.log(f"[#00d4ff]Step {step}/{total}: {desc}[/]"),
+                        screen.write_log(f"[#00d4ff]Step {step}/{total}: {desc}[/]"),
                 )
 
                 self._devices = result.devices

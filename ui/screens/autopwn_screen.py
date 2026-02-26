@@ -120,7 +120,7 @@ class AutoPwnScreen(Screen):
     def set_target(self, target: str) -> None:
         self._target = target
 
-    def log(self, message: str) -> None:
+    def write_log(self, message: str) -> None:
         """Add message to the live log."""
         try:
             log_widget = self.query_one("#pwn-log", RichLog)
