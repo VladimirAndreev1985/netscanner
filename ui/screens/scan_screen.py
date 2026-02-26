@@ -68,7 +68,7 @@ class ScanScreen(Screen):
             yield Button(t("start_scan"), id="start-scan-btn", variant="success")
 
             yield Static(f"[bold #00ff00]{t('detected_subnets')}[/]", classes="section-title")
-            yield RichLog(id="subnet-list", wrap=True, max_lines=50)
+            yield RichLog(id="subnet-list", wrap=True, max_lines=50, markup=True)
 
         yield Static(f" [#8b949e]{t('footer_scan')}[/]", id="footer")
 

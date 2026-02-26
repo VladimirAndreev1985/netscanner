@@ -68,16 +68,18 @@ class NetScannerApp(App):
     def action_show_results(self) -> None:
         if self._devices:
             self.switch_screen("results")
-            screen = self.query_one(ResultsScreen)
-            screen.load_devices(self._devices)
+            screen = self.screen
+            if isinstance(screen, ResultsScreen):
+                screen.load_devices(self._devices)
         else:
             self.notify(t("no_results"), severity="warning")
 
     def action_show_gallery(self) -> None:
         if self._devices:
             self.switch_screen("gallery")
-            screen = self.query_one(GalleryScreen)
-            screen.load_cameras(self._devices)
+            screen = self.screen
+            if isinstance(screen, GalleryScreen):
+                screen.load_cameras(self._devices)
         else:
             self.notify(t("no_results"), severity="warning")
 
@@ -103,18 +105,15 @@ class NetScannerApp(App):
 
     def on_wifi_screen_proceed_to_scan(self, event: WiFiScreen.ProceedToScan) -> None:
         """Switch to scan screen with pre-filled target (backup handler)."""
+        subnet = event.subnet
         self.switch_screen("scan")
-        if event.subnet:
-            self.call_after_refresh(
-                lambda: self._try_set_scan_target(event.subnet)
-            )
+        if subnet:
+            self.call_after_refresh(lambda: self._try_set_scan_target(subnet))
 
     def _try_set_scan_target(self, subnet: str) -> None:
-        try:
-            scan_screen = self.query_one(ScanScreen)
-            scan_screen.set_target(subnet)
-        except Exception as e:
-            logger.debug(f"set_target: {e}")
+        screen = self.screen
+        if isinstance(screen, ScanScreen):
+            screen.set_target(subnet)
 
     # ═══ Scan Screen Events ═══
 
@@ -128,8 +127,9 @@ class NetScannerApp(App):
     def on_scan_screen_auto_pwn_requested(self, event: ScanScreen.AutoPwnRequested) -> None:
         """Handle auto-pwn request from scan screen."""
         self.switch_screen("autopwn")
-        screen = self.query_one(AutoPwnScreen)
-        screen.set_target(event.target)
+        screen = self.screen
+        if isinstance(screen, AutoPwnScreen):
+            screen.set_target(event.target)
         self._run_autopwn(event.target, event.mode)
 
     # ═══ Results Screen Events ═══
@@ -137,8 +137,9 @@ class NetScannerApp(App):
     def on_results_screen_device_selected(self, event: ResultsScreen.DeviceSelected) -> None:
         """Handle device selection — switch to detail view."""
         self.switch_screen("device")
-        screen = self.query_one(DeviceScreen)
-        screen.load_device(event.device)
+        screen = self.screen
+        if isinstance(screen, DeviceScreen):
+            screen.load_device(event.device)
 
     def on_results_screen_export_requested(self, event: ResultsScreen.ExportRequested) -> None:
         """Handle export request."""
@@ -150,7 +151,9 @@ class NetScannerApp(App):
         """Handle device action requests."""
         device = event.device
         action = event.action
-        screen = self.query_one(DeviceScreen)
+        screen = self.screen
+        if not isinstance(screen, DeviceScreen):
+            return
 
         if action == "deep_scan":
             self._deep_scan_device(device, screen)
@@ -178,31 +181,45 @@ class NetScannerApp(App):
 
         async def do_scan():
             try:
-                scan_screen = self.query_one(ScanScreen)
-                scan_screen.set_progress(10, t("scanning_target", target=target))
+                screen = self.screen
+                if isinstance(screen, ScanScreen):
+                    screen.set_progress(10, t("scanning_target", target=target))
 
                 from core.scanner import full_scan
                 devices = await full_scan(target, scan_type)
 
-                scan_screen.set_progress(50, t("fingerprinting"))
+                screen = self.screen
+                if isinstance(screen, ScanScreen):
+                    screen.set_progress(50, t("fingerprinting"))
+
                 from core.fingerprint import fingerprint_all
                 devices = await fingerprint_all(devices)
 
-                scan_screen.set_progress(70, t("checking_vulns"))
+                screen = self.screen
+                if isinstance(screen, ScanScreen):
+                    screen.set_progress(70, t("checking_vulns"))
+
                 from core.vuln_checker import check_all_devices
                 devices = check_all_devices(devices)
 
                 if scan_type == "deep":
-                    scan_screen.set_progress(80, t("analyzing_cameras"))
+                    screen = self.screen
+                    if isinstance(screen, ScanScreen):
+                        screen.set_progress(80, t("analyzing_cameras"))
                     from core.camera_analyzer import analyze_all_cameras
                     devices = await analyze_all_cameras(devices)
 
-                    scan_screen.set_progress(90, t("checking_credentials"))
+                    screen = self.screen
+                    if isinstance(screen, ScanScreen):
+                        screen.set_progress(90, t("checking_credentials"))
                     from core.cred_checker import check_all_devices as check_creds
                     devices = await check_creds(devices)
 
                 self._devices = devices
-                scan_screen.scan_complete(len(devices))
+
+                screen = self.screen
+                if isinstance(screen, ScanScreen):
+                    screen.scan_complete(len(devices))
 
                 self.notify(
                     t("scan_complete", count=len(devices)),
@@ -212,8 +229,9 @@ class NetScannerApp(App):
 
                 # Auto-switch to results
                 self.switch_screen("results")
-                results_screen = self.query_one(ResultsScreen)
-                results_screen.load_devices(devices)
+                screen = self.screen
+                if isinstance(screen, ResultsScreen):
+                    screen.load_devices(devices)
 
             except Exception as e:
                 logger.error(f"Scan failed: {e}")
@@ -229,7 +247,9 @@ class NetScannerApp(App):
 
         async def do_autopwn():
             try:
-                screen = self.query_one(AutoPwnScreen)
+                screen = self.screen
+                if not isinstance(screen, AutoPwnScreen):
+                    return
 
                 from core.auto_pwn import auto_pwn
                 result = await auto_pwn(
@@ -259,7 +279,6 @@ class NetScannerApp(App):
 
             except Exception as e:
                 logger.error(f"Auto-Pwn failed: {e}")
-                screen.log(f"[bold #ff0000]{t('error')}: {e}[/]")
                 self.notify(f"{t('error')}: {e}", severity="error")
             finally:
                 self._scan_running = False

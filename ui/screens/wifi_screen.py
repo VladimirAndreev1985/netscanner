@@ -492,8 +492,9 @@ class WiFiScreen(Screen):
         """Set target on scan screen after switch."""
         try:
             from ui.screens.scan_screen import ScanScreen
-            scan_screen = self.app.query_one(ScanScreen)
-            scan_screen.set_target(subnet)
+            screen = self.app.screen
+            if isinstance(screen, ScanScreen):
+                screen.set_target(subnet)
         except Exception:
             pass
 

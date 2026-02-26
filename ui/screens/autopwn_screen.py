@@ -60,7 +60,7 @@ class AutoPwnScreen(Screen):
                 yield Static(f"{t('compromised')}: [bold]0[/]", id="pwn-comp",
                              classes="stat-item stat-compromised")
 
-            yield RichLog(id="pwn-log", wrap=True, max_lines=500)
+            yield RichLog(id="pwn-log", wrap=True, max_lines=500, markup=True)
 
             with Horizontal():
                 yield Button(t("generate_html"), id="gen-html",

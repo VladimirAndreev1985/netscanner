@@ -56,7 +56,7 @@ class DeviceScreen(Screen):
                 yield Button(t("shodan"), id="btn-shodan", classes="action-btn")
                 yield Button(t("back"), id="btn-back", classes="action-btn")
 
-            yield RichLog(id="action-log", wrap=True, max_lines=100)
+            yield RichLog(id="action-log", wrap=True, max_lines=100, markup=True)
 
         yield Static(
             f" [#8b949e]{t('footer_device')}[/]",
