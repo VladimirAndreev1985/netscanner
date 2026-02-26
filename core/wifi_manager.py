@@ -433,7 +433,11 @@ async def scan_networks_deep(
                 pass
 
 
-def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNetwork]:
+def _parse_airodump_csv(
+    csv_path: str = "",
+    skip_vendor: bool = False,
+    raw_content: str | None = None,
+) -> list[WiFiNetwork]:
     """Parse airodump-ng CSV output into WiFiNetwork list.
 
     Finds sections by header text (BSSID / Station MAC) instead of
@@ -441,19 +445,22 @@ def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNe
     OS line-ending variants.
 
     Args:
+        csv_path: path to CSV file (used only if raw_content is None).
         skip_vendor: skip MAC vendor lookup (faster for intermediate updates).
+        raw_content: pre-read file content (avoids race condition with airodump).
     """
     networks: dict[str, WiFiNetwork] = {}
     client_map: dict[str, list[str]] = {}
 
-    try:
-        with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
-    except FileNotFoundError:
-        return []
+    if raw_content is None:
+        try:
+            with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
+                raw_content = f.read()
+        except FileNotFoundError:
+            return []
 
     # Normalize line endings
-    content = content.replace("\r\n", "\n").replace("\r", "\n")
+    content = raw_content.replace("\r\n", "\n").replace("\r", "\n")
     lines = content.splitlines()
 
     # Find section boundaries by header text
@@ -529,22 +536,36 @@ def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNe
             client_map[bssid] = []
 
     # Parse Clients section
+    _client_lines_total = 0
+    _client_lines_few_parts = 0
+    _client_lines_bad_mac = 0
+    _client_unassociated = 0
+    _client_bssid_miss = 0
+
     if client_start >= 0:
         for i in range(client_start, len(lines)):
             line = lines[i]
             if not line.strip():
                 continue
+            _client_lines_total += 1
             parts = [p.strip() for p in line.split(",")]
             if len(parts) < 6:
+                _client_lines_few_parts += 1
                 continue
 
             station_mac = parts[0].upper()
             if not re.match(r"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$", station_mac):
+                _client_lines_bad_mac += 1
                 continue
 
-            assoc_bssid = parts[5].upper()
+            assoc_bssid = parts[5].upper().strip()
+            if "(NOT ASSOCIATED)" in assoc_bssid or not assoc_bssid:
+                _client_unassociated += 1
+                continue
             if assoc_bssid in client_map:
                 client_map[assoc_bssid].append(station_mac)
+            else:
+                _client_bssid_miss += 1
 
     # Merge client counts into networks
     for bssid, net in networks.items():
@@ -554,18 +575,12 @@ def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNe
 
     total_clients = sum(len(v) for v in client_map.values())
     logger.info(
-        f"CSV parsed: {len(networks)} APs, "
-        f"{total_clients} clients, "
-        f"ap_start={ap_start}, client_start={client_start}, "
-        f"total_lines={len(lines)}"
+        f"CSV: {len(networks)} APs, {total_clients} clients "
+        f"(lines={_client_lines_total} few_parts={_client_lines_few_parts} "
+        f"bad_mac={_client_lines_bad_mac} unassoc={_client_unassociated} "
+        f"bssid_miss={_client_bssid_miss}), "
+        f"ap_start={ap_start}, client_start={client_start}"
     )
-    # Extra diagnostics when no clients found but section exists
-    if client_start >= 0 and total_clients == 0:
-        sample_lines = lines[client_start:client_start + 5]
-        logger.info(
-            f"Client section found at line {client_start} but 0 clients parsed. "
-            f"Sample lines: {sample_lines!r}"
-        )
 
     result = list(networks.values())
     result.sort(key=lambda n: n.signal, reverse=True)

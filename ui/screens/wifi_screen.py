@@ -44,6 +44,7 @@ class WiFiScreen(Screen):
         self._internet_info = {}
         self._scanning = False
         self._quick_scan_cache: dict[str, object] = {}  # BSSID -> WiFiNetwork from quick scan
+        self._known_networks: dict[str, object] = {}   # BSSID -> best known WiFiNetwork (across ticks)
         # Deep scan state (continuous monitor mode)
         self._mon_iface: str | None = None
         self._airodump_proc = None
@@ -253,6 +254,7 @@ class WiFiScreen(Screen):
         if self._scanning:
             return
         self._scanning = True
+        self._known_networks.clear()  # Fresh start for new scan
 
         log = self.query_one("#recon-log", RichLog)
         progress = self.query_one(ScanProgress)
@@ -318,59 +320,45 @@ class WiFiScreen(Screen):
             self._scanning = False
 
     def _on_scan_tick(self) -> None:
-        """Periodic callback: read airodump CSV and update network table."""
+        """Periodic callback: read airodump CSV and update network table.
+
+        Reads the file ONCE per tick to avoid race condition with airodump
+        rewriting the CSV (which caused parser to see partial file without
+        the client section, while a second read saw the complete file).
+        Merges data across ticks to prevent SSID flickering.
+        """
         if not self._csv_path:
             return
         try:
-            import os as _os
-
-            # Diagnostic: check CSV file state
+            # Read CSV file ONCE — avoid race condition with airodump rewrite
             try:
-                fsize = _os.path.getsize(self._csv_path)
-            except OSError:
-                fsize = -1
-
-            if fsize <= 0:
+                with open(self._csv_path, "r", encoding="utf-8",
+                          errors="replace") as _f:
+                    raw_content = _f.read()
+            except (OSError, FileNotFoundError):
                 return
 
-            from core.wifi_manager import _parse_airodump_csv
-            networks = _parse_airodump_csv(self._csv_path, skip_vendor=True)
+            if not raw_content or len(raw_content) < 20:
+                return
 
-            # Diagnostic: read raw CSV to check for client section
-            diag_info = ""
-            try:
-                with open(self._csv_path, "r", encoding="utf-8", errors="replace") as _f:
-                    raw = _f.read()
-                has_station = "Station MAC" in raw
-                raw_lines = raw.replace("\r\n", "\n").replace("\r", "\n").splitlines()
-                diag_info = (
-                    f"csv={fsize}b lines={len(raw_lines)} "
-                    f"StationMAC={'YES' if has_station else 'NO'}"
-                )
-                # If Station MAC found, show a few lines after it for debug
-                if has_station:
-                    for idx, ln in enumerate(raw_lines):
-                        if ln.strip().lstrip("\ufeff").startswith("Station MAC"):
-                            # Show up to 3 data lines after header
-                            sample = raw_lines[idx + 1:idx + 4]
-                            sample_txt = " | ".join(
-                                s.strip()[:60] for s in sample if s.strip()
-                            )
-                            if sample_txt:
-                                diag_info += f" sample=[{sample_txt}]"
-                            break
-            except Exception:
-                pass
+            # Parse using the same content (no second read)
+            from core.wifi_manager import _parse_airodump_csv
+            networks = _parse_airodump_csv(
+                skip_vendor=True, raw_content=raw_content
+            )
+
+            # Diagnostic from the SAME content
+            has_station = "Station MAC" in raw_content
+            diag_info = f"St={'Y' if has_station else 'N'}"
 
             if not networks:
-                # Show diagnostic even if no networks parsed
                 elapsed = int(time.time() - self._scan_start)
                 self.query_one(ScanProgress).update_progress(
                     50, f"Monitor: {elapsed}s — waiting... ({diag_info})"
                 )
                 return
 
-            # Merge WPS/vendor from quick scan cache
+            # Merge with quick scan cache (WPS, vendor)
             for net in networks:
                 cached = self._quick_scan_cache.get(net.bssid)
                 if cached:
@@ -378,6 +366,22 @@ class WiFiScreen(Screen):
                         net.wps_enabled = True
                     if cached.router_vendor and not net.router_vendor:
                         net.router_vendor = cached.router_vendor
+
+            # Merge across ticks — prevent SSID flickering and data loss
+            for net in networks:
+                prev = self._known_networks.get(net.bssid)
+                if prev:
+                    # Keep known SSID if current parse shows empty
+                    if not net.ssid and prev.ssid:
+                        net.ssid = prev.ssid
+                        net.hidden = False
+                    # Keep max observed values
+                    if prev.clients_count > net.clients_count:
+                        net.clients_count = prev.clients_count
+                        net.clients = prev.clients
+                    if prev.data_packets > net.data_packets:
+                        net.data_packets = prev.data_packets
+                self._known_networks[net.bssid] = net
 
             self._networks = networks
             self._populate_network_table()
@@ -427,7 +431,7 @@ class WiFiScreen(Screen):
                 except Exception as e:
                     log_cb(f"Could not save CSV: {e}")
 
-            # Final parse WITH vendor lookup
+            # Final parse WITH vendor lookup (airodump stopped, safe to read)
             if self._csv_path:
                 from core.wifi_manager import _parse_airodump_csv
                 final = _parse_airodump_csv(self._csv_path)
@@ -439,6 +443,15 @@ class WiFiScreen(Screen):
                                 net.wps_enabled = True
                             if cached.router_vendor and not net.router_vendor:
                                 net.router_vendor = cached.router_vendor
+                        # Merge with known data (preserve best SSID, max clients)
+                        prev = self._known_networks.get(net.bssid)
+                        if prev:
+                            if not net.ssid and prev.ssid:
+                                net.ssid = prev.ssid
+                                net.hidden = False
+                            if prev.clients_count > net.clients_count:
+                                net.clients_count = prev.clients_count
+                                net.clients = prev.clients
                     self._networks = final
                     self._populate_network_table()
 
