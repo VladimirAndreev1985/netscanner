@@ -400,10 +400,13 @@ async def scan_networks_deep(
         await _run(["systemctl", "restart", "NetworkManager"], timeout=15)
         await asyncio.sleep(3)
 
-        # 6. Re-enable kernel console messages
+        # 6. Prevent auto-reconnection — user decides when to connect
+        await _run(["nmcli", "device", "disconnect", adapter], timeout=5)
+
+        # 7. Re-enable kernel console messages
         await _run(["dmesg", "-E"], timeout=3, new_session=True)
 
-        # 7. Parse CSV results
+        # 8. Parse CSV results
         log("Parsing scan results...")
         cleanup_needed = False
         return _parse_airodump_csv(csv_file)
@@ -417,6 +420,8 @@ async def scan_networks_deep(
             # Only cleanup if the try block didn't complete fully
             await _run(["airmon-ng", "stop", mon_iface], timeout=5, new_session=True)
             await _run(["systemctl", "restart", "NetworkManager"], timeout=10)
+            await asyncio.sleep(2)
+            await _run(["nmcli", "device", "disconnect", adapter], timeout=5)
         # Always re-enable kernel console messages
         await _run(["dmesg", "-E"], timeout=3, new_session=True)
         # Clean temp files

@@ -1,6 +1,7 @@
 """WiFi screen — adapter selection, network scanning, connection, recon."""
 
 import asyncio
+import logging
 from textual.screen import Screen
 from textual.app import ComposeResult
 from textual.widgets import Static, Button, Input, RichLog, DataTable
@@ -9,6 +10,8 @@ from textual.message import Message
 
 from core.i18n import t
 from ui.widgets.progress_bar import ScanProgress
+
+logger = logging.getLogger("netscanner.wifi_screen")
 
 
 class WiFiScreen(Screen):
@@ -241,6 +244,18 @@ class WiFiScreen(Screen):
                 pass
 
         try:
+            # If no quick scan was done yet, run one first to get WPS/vendor data
+            # (airodump CSV doesn't include WPS info; nmcli does)
+            if not self._quick_scan_cache:
+                progress.update_progress(5, t("scanning_wifi"))
+                log_cb("Quick pre-scan for WPS/vendor data...")
+                from core.wifi_manager import scan_networks
+                quick_results = await scan_networks(self._selected_adapter)
+                self._quick_scan_cache = {n.bssid: n for n in quick_results}
+                self._networks = quick_results
+                self._populate_network_table()
+                log_cb(f"Pre-scan: {len(quick_results)} networks cached")
+
             progress.update_progress(10, t("starting_monitor"))
 
             def update_cb(networks, elapsed, total):
@@ -257,9 +272,12 @@ class WiFiScreen(Screen):
                     self._networks = networks
                     self._populate_network_table()
                     pct = 10 + int((elapsed / total) * 80)
-                    progress.update_progress(pct, f"Scanning... {elapsed}/{total}s — {len(networks)} networks")
-                except Exception:
-                    pass
+                    progress.update_progress(
+                        pct,
+                        f"Scanning... {elapsed}/{total}s — {len(networks)} networks"
+                    )
+                except Exception as exc:
+                    logger.error(f"update_cb error: {exc}")
 
             from core.wifi_manager import scan_networks_deep
             self._networks = await scan_networks_deep(
@@ -280,6 +298,16 @@ class WiFiScreen(Screen):
 
             progress.complete("")
             self._populate_network_table()
+
+            # After deep scan, adapter is disconnected (monitor mode + NM restart)
+            # Update status to reflect this — user must reconnect manually
+            self.query_one("#wifi-status", Static).update(
+                f"[#888]{t('not_connected')}[/]"
+            )
+            self._connection_info = None
+            self.query_one("#recon-info", Static).update(
+                f"[#888]{t('recon_after_connect')}[/]"
+            )
 
             # Force full screen refresh to recover from any terminal corruption
             # caused by airmon-ng / kernel messages during monitor mode
