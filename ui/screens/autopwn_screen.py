@@ -33,13 +33,13 @@ class AutoPwnScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #00ff00] {t('autopwn_title')} [/] │ "
-            f"[#ff0000]{t('autopwn_subtitle')}[/]",
+            "[bold #00ff41]\u25c6 NETSCANNER[/] [#1a3a1a]//[/] "
+            "[#00d4ff]AUTOMATED OPERATIONS[/]",
             id="header",
         )
 
         with Vertical(id="autopwn-container"):
-            yield Static(f"[bold #00ff00]{t('mode_selection')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('mode_selection')}[/]", classes="section-title")
             with Horizontal(id="pwn-mode-select"):
                 yield Button(t("passive"), id="pwn-passive",
                              classes="mode-btn passive")
@@ -73,7 +73,7 @@ class AutoPwnScreen(Screen):
                              classes="action-btn")
 
         yield Static(
-            f" [#8b949e]{t('autopwn_pipeline')}[/]",
+            f" [#3a4a3a]{t('autopwn_pipeline')}[/]",
             id="footer",
         )
 
@@ -105,7 +105,7 @@ class AutoPwnScreen(Screen):
 
     def _update_mode_desc(self) -> None:
         descs = {
-            "passive": f"[#00aaff]{t('mode_passive_desc')}[/]",
+            "passive": f"[#00d4ff]{t('mode_passive_desc')}[/]",
             "normal": f"[#ffaa00]{t('mode_normal_autopwn_desc')}[/]",
             "aggressive": f"[#ff0000]{t('mode_aggressive_desc')}[/]",
         }
@@ -133,7 +133,7 @@ class AutoPwnScreen(Screen):
         """Update statistics display."""
         try:
             self.query_one("#pwn-found", Static).update(
-                f"{t('found')}: [bold #00aaff]{found}[/]"
+                f"{t('found')}: [bold #00d4ff]{found}[/]"
             )
             self.query_one("#pwn-cameras", Static).update(
                 f"{t('cameras')}: [bold #ff6600]{cameras}[/]"

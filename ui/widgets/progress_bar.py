@@ -21,7 +21,7 @@ class ScanProgress(Vertical):
         text = self.query_one("#progress-text", Static)
         bar.progress = value
         if status:
-            text.update(f"[#00ff00]{status}[/]")
+            text.update(f"[#00ff41]{status}[/]")
 
     def reset(self) -> None:
         """Reset progress bar."""
@@ -35,4 +35,4 @@ class ScanProgress(Vertical):
         bar = self.query_one("#progress-bar", ProgressBar)
         text = self.query_one("#progress-text", Static)
         bar.progress = 100
-        text.update(f"[bold #00ff00]{message}[/]")
+        text.update(f"[bold #00ff41]{message}[/]")

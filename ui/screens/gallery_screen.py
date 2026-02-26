@@ -25,9 +25,8 @@ class GalleryScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #00ff00] {t('camera_gallery')} [/] │ "
-            f"[#8b949e]↑↓[/] {t('navigate')} │ [#8b949e]Enter[/] {t('device_details')} │ "
-            f"[#8b949e]B[/] {t('back')}",
+            "[bold #00ff41]\u25c6 NETSCANNER[/] [#1a3a1a]//[/] "
+            "[#00d4ff]VISUAL INTELLIGENCE[/]",
             id="header",
         )
 
@@ -39,7 +38,7 @@ class GalleryScreen(Screen):
             yield Button(t("back"), id="gallery-back", classes="action-btn")
 
         yield Static(
-            f" [#8b949e]{t('footer_gallery')}[/]",
+            f" [#3a4a3a]{t('footer_gallery')}[/]",
             id="footer",
         )
 
@@ -62,11 +61,11 @@ class GalleryScreen(Screen):
             border = "═" * 60
             risk_color = {
                 "critical": "#ff0000", "high": "#ff6600",
-                "medium": "#ffaa00", "low": "#00aaff", "info": "#888888"
+                "medium": "#ffaa00", "low": "#00d4ff", "info": "#3a4a3a"
             }.get(dev.risk_level, "#888")
 
             screenshot_indicator = (
-                f"[bold #00ff00]◉ {t('frame_captured')}[/]" if dev.screenshots
+                f"[bold #00ff41]◉ {t('frame_captured')}[/]" if dev.screenshots
                 else f"[#888]○ {t('no_frame')}[/]"
             )
 
@@ -78,7 +77,7 @@ class GalleryScreen(Screen):
 
             rtsp_str = ""
             if dev.rtsp_urls:
-                rtsp_str = f"\n  [#00aaff]RTSP:[/] {dev.rtsp_urls[0]}"
+                rtsp_str = f"\n  [#00d4ff]RTSP:[/] {dev.rtsp_urls[0]}"
                 if len(dev.rtsp_urls) > 1:
                     rtsp_str += f" (+{len(dev.rtsp_urls) - 1} more)"
 
@@ -92,16 +91,16 @@ class GalleryScreen(Screen):
 
             card = (
                 f"[#30363d]{border}[/]\n"
-                f"  [bold #00ff00]Camera #{i+1}[/] — "
+                f"  [bold #00ff41]Camera #{i+1}[/] — "
                 f"[bold]{dev.ip}[/]  {screenshot_indicator}\n"
-                f"  [#00ff00]Brand:[/] {dev.brand or 'Unknown'}  "
-                f"[#00ff00]Model:[/] {dev.model or 'Unknown'}  "
-                f"[#00ff00]FW:[/] {dev.firmware_version or na}\n"
-                f"  [#00ff00]MAC:[/] {dev.mac or na}  "
-                f"[#00ff00]Vendor:[/] {dev.vendor or na}\n"
-                f"  [#00ff00]Risk:[/] [{risk_color}]{dev.risk_score:.1f}/10 "
+                f"  [#00ff41]Brand:[/] {dev.brand or 'Unknown'}  "
+                f"[#00ff41]Model:[/] {dev.model or 'Unknown'}  "
+                f"[#00ff41]FW:[/] {dev.firmware_version or na}\n"
+                f"  [#00ff41]MAC:[/] {dev.mac or na}  "
+                f"[#00ff41]Vendor:[/] {dev.vendor or na}\n"
+                f"  [#00ff41]Risk:[/] [{risk_color}]{dev.risk_score:.1f}/10 "
                 f"({dev.risk_level})[/]{vuln_str}\n"
-                f"  [#00ff00]Web:[/] {dev.web_interface or na}"
+                f"  [#00ff41]Web:[/] {dev.web_interface or na}"
                 f"{rtsp_str}"
             )
             if creds_str:
@@ -110,7 +109,7 @@ class GalleryScreen(Screen):
             lines.append(card)
 
         lines.append(f"[#30363d]{'═' * 60}[/]")
-        lines.append(f"\n[bold #00ff00]{t('total_cameras', count=len(self._devices))}[/]")
+        lines.append(f"\n[bold #00ff41]{t('total_cameras', count=len(self._devices))}[/]")
 
         self.query_one("#gallery-content", Static).update("\n".join(lines))
 

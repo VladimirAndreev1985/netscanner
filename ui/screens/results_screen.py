@@ -34,9 +34,8 @@ class ResultsScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #00ff00] {t('results')} [/] │ "
-            f"[#8b949e]↑↓[/] {t('navigate')} │ [#8b949e]Enter[/] {t('device_details')} │ "
-            f"[#8b949e]E[/] {t('export')} │ [#8b949e]B[/] {t('back')}",
+            "[bold #00ff41]\u25c6 NETSCANNER[/] [#1a3a1a]//[/] "
+            "[#00d4ff]INTELLIGENCE REPORT[/]",
             id="header",
         )
 
@@ -57,7 +56,7 @@ class ResultsScreen(Screen):
                 yield Button(t("back_to_scan"), id="back-btn", classes="action-btn")
 
         yield Static(
-            f" [#8b949e]{t('footer_results')}[/]",
+            f" [#3a4a3a]{t('footer_results')}[/]",
             id="footer",
         )
 

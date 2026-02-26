@@ -52,6 +52,7 @@ class NetScannerApp(App):
         load_language()
         self._devices: list[Device] = []
         self._scan_running = False
+        self._scan_task: asyncio.Task | None = None
 
     def on_mount(self) -> None:
         """Show WiFi screen on startup."""
@@ -131,6 +132,20 @@ class NetScannerApp(App):
             return
         self._run_scan(event.targets, event.scan_type)
 
+    def on_scan_screen_scan_abort_requested(self, event: ScanScreen.ScanAbortRequested) -> None:
+        """Handle scan abort request."""
+        if self._scan_task and not self._scan_task.done():
+            self._scan_task.cancel()
+            self._scan_running = False
+            screen = self.screen
+            if isinstance(screen, ScanScreen):
+                screen.show_aborted_state()
+            self.notify(t("scan_aborted"), severity="warning")
+
+    def on_scan_screen_view_results_requested(self, event: ScanScreen.ViewResultsRequested) -> None:
+        """Handle view results request — switch to results without scanning."""
+        self.action_show_results()
+
     def on_scan_screen_auto_pwn_requested(self, event: ScanScreen.AutoPwnRequested) -> None:
         """Handle auto-pwn request from scan screen."""
         self.switch_screen("autopwn")
@@ -200,6 +215,11 @@ class NetScannerApp(App):
         """Run network scan in background."""
         self._scan_running = True
 
+        # Show scanning state on scan screen
+        screen = self.screen
+        if isinstance(screen, ScanScreen):
+            screen.show_scanning_state()
+
         async def do_scan():
             try:
                 screen = self.screen
@@ -257,13 +277,22 @@ class NetScannerApp(App):
                 if isinstance(screen, ResultsScreen):
                     screen.load_devices(devices)
 
+            except asyncio.CancelledError:
+                logger.info("Scan cancelled by user")
+                screen = self.screen
+                if isinstance(screen, ScanScreen):
+                    screen.show_aborted_state()
             except Exception as e:
                 logger.error(f"Scan failed: {e}")
                 self.notify(f"{t('error')}: {e}", severity="error")
+                screen = self.screen
+                if isinstance(screen, ScanScreen):
+                    screen.show_standby_state()
             finally:
                 self._scan_running = False
+                self._scan_task = None
 
-        asyncio.create_task(do_scan())
+        self._scan_task = asyncio.create_task(do_scan())
 
     def _run_autopwn(self, target: str, mode: str) -> None:
         """Run auto-pwn in background."""
@@ -280,7 +309,7 @@ class NetScannerApp(App):
                     target, mode=screen.mode,
                     log_callback=lambda msg: screen.log(msg),
                     progress_callback=lambda step, total, desc:
-                        screen.log(f"[#00aaff]Step {step}/{total}: {desc}[/]"),
+                        screen.log(f"[#00d4ff]Step {step}/{total}: {desc}[/]"),
                 )
 
                 self._devices = result.devices
@@ -312,7 +341,7 @@ class NetScannerApp(App):
     def _deep_scan_device(self, device: Device, screen: DeviceScreen) -> None:
         """Deep scan a single device."""
         async def do_deep():
-            screen.log_action(f"[#00aaff]{t('starting_deep_scan')}[/]")
+            screen.log_action(f"[#00d4ff]{t('starting_deep_scan')}[/]")
             try:
                 from core.scanner import nmap_scan
                 results = await nmap_scan(device.ip, scan_type="deep")
@@ -332,7 +361,7 @@ class NetScannerApp(App):
                 check_vulnerabilities(device)
 
                 screen.load_device(device)
-                screen.log_action(f"[bold #00ff00]{t('deep_scan_complete')}[/]")
+                screen.log_action(f"[bold #00ff41]{t('deep_scan_complete')}[/]")
             except Exception as e:
                 screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
 
@@ -341,14 +370,14 @@ class NetScannerApp(App):
     def _check_device_creds(self, device: Device, screen: DeviceScreen) -> None:
         """Check credentials for a device."""
         async def do_check():
-            screen.log_action(f"[#00aaff]{t('checking_creds')}[/]")
+            screen.log_action(f"[#00d4ff]{t('checking_creds')}[/]")
             try:
                 from core.cred_checker import check_credentials
                 results = await check_credentials(device)
                 screen.load_device(device)
                 success = sum(1 for c in results if c.success)
                 screen.log_action(
-                    f"[bold #00ff00]{t('cred_check_complete', count=success)}[/]"
+                    f"[bold #00ff41]{t('cred_check_complete', count=success)}[/]"
                 )
             except Exception as e:
                 screen.log_action(f"[#ff0000]{t('error')}: {e}[/]")
@@ -358,12 +387,12 @@ class NetScannerApp(App):
     def _grab_frame(self, device: Device, screen: DeviceScreen) -> None:
         """Capture a frame from camera."""
         async def do_grab():
-            screen.log_action(f"[#00aaff]{t('capturing_frame')}[/]")
+            screen.log_action(f"[#00d4ff]{t('capturing_frame')}[/]")
             try:
                 from core.camera_analyzer import capture_snapshot
                 path = await capture_snapshot(device)
                 if path:
-                    screen.log_action(f"[bold #00ff00]{t('frame_saved', path=path)}[/]")
+                    screen.log_action(f"[bold #00ff41]{t('frame_saved', path=path)}[/]")
                 else:
                     screen.log_action(f"[#ffaa00]{t('frame_failed')}[/]")
                 screen.load_device(device)
@@ -386,7 +415,7 @@ class NetScannerApp(App):
                     )
                     for mod in modules:
                         screen.log_action(
-                            f"  [#00aaff]{mod['module']}[/] — {mod['description']}"
+                            f"  [#00d4ff]{mod['module']}[/] — {mod['description']}"
                         )
                     screen.log_action(
                         f"\n[bold #ff0000]⚠ {t('msf_manual_note')}[/]"
@@ -397,7 +426,7 @@ class NetScannerApp(App):
 
                 # Also search by CVE in MSF
                 if device.vulnerabilities and msf_client.is_running():
-                    screen.log_action(f"\n[#00aaff]{t('searching_msf')}[/]")
+                    screen.log_action(f"\n[#00d4ff]{t('searching_msf')}[/]")
                     found = msf_client.search_exploits(device)
                     if found:
                         for f in found:
@@ -412,7 +441,7 @@ class NetScannerApp(App):
     def _find_poc(self, device: Device, screen: DeviceScreen) -> None:
         """Find PoC exploits for device."""
         async def do_find():
-            screen.log_action(f"[#00aaff]{t('searching_poc')}[/]")
+            screen.log_action(f"[#00d4ff]{t('searching_poc')}[/]")
             try:
                 from core.exploit_finder import find_exploits
                 results = await find_exploits(device)
@@ -423,7 +452,7 @@ class NetScannerApp(App):
                     for r in results:
                         stars = f" ★{r['stars']}" if r.get('stars') else ""
                         screen.log_action(
-                            f"  [{r['source']}] [#00aaff]{r['name']}[/]{stars}\n"
+                            f"  [{r['source']}] [#00d4ff]{r['name']}[/]{stars}\n"
                             f"    {r['url']}"
                         )
                 else:
@@ -436,7 +465,7 @@ class NetScannerApp(App):
     def _shodan_lookup(self, device: Device, screen: DeviceScreen) -> None:
         """Look up device on Shodan."""
         async def do_lookup():
-            screen.log_action(f"[#00aaff]{t('querying_shodan')}[/]")
+            screen.log_action(f"[#00d4ff]{t('querying_shodan')}[/]")
             try:
                 from core.external_apis import shodan_lookup
                 result = await shodan_lookup(device.ip)
@@ -444,7 +473,7 @@ class NetScannerApp(App):
                     if "message" in result:
                         screen.log_action(f"[#888]{result['message']}[/]")
                     else:
-                        screen.log_action(f"[bold #00ff00]{t('shodan_results')}[/]")
+                        screen.log_action(f"[bold #00ff41]{t('shodan_results')}[/]")
                         screen.log_action(f"  Org: {result.get('org', 'N/A')}")
                         screen.log_action(f"  OS: {result.get('os', 'N/A')}")
                         screen.log_action(f"  Country: {result.get('country', 'N/A')}")

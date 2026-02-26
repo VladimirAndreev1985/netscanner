@@ -42,15 +42,15 @@ class WiFiScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #00ff00] {t('wifi_manager')} [/] │ "
-            f"[#00aaff]{t('wifi_subtitle')}[/]",
+            "[bold #00ff41]\u25c6 NETSCANNER[/] [#1a3a1a]//[/] "
+            "[#00d4ff]SIGNAL INTELLIGENCE[/]",
             id="header",
         )
 
         with ScrollableContainer(id="wifi-container"):
             # ═══ Adapter Section ═══
             yield Static(
-                f"[bold #00ff00]{t('adapter').upper()}[/]",
+                f"[bold #00ff41]{t('adapter').upper()}[/]",
                 classes="section-title",
             )
             yield Static("", id="adapter-buttons")
@@ -61,7 +61,7 @@ class WiFiScreen(Screen):
 
             # ═══ Available Networks ═══
             yield Static(
-                f"[bold #00ff00]{t('available_networks').upper()}[/]",
+                f"[bold #00ff41]{t('available_networks').upper()}[/]",
                 classes="section-title",
             )
             with Horizontal(id="wifi-scan-buttons"):
@@ -80,7 +80,7 @@ class WiFiScreen(Screen):
 
             # ═══ Connection ═══
             yield Static(
-                f"[bold #00ff00]{t('connection_section').upper()}[/]",
+                f"[bold #00ff41]{t('connection_section').upper()}[/]",
                 classes="section-title",
             )
             yield Static("", id="selected-network-label")
@@ -101,7 +101,7 @@ class WiFiScreen(Screen):
 
             # ═══ Network Recon ═══
             yield Static(
-                f"[bold #00ff00]{t('network_recon').upper()}[/]",
+                f"[bold #00ff41]{t('network_recon').upper()}[/]",
                 classes="section-title",
             )
             yield Static(
@@ -117,7 +117,7 @@ class WiFiScreen(Screen):
             )
 
         yield Static(
-            f" [#8b949e]{t('footer_wifi')}[/]",
+            f" [#3a4a3a]{t('footer_wifi')}[/]",
             id="footer",
         )
 
@@ -156,8 +156,8 @@ class WiFiScreen(Screen):
         for adapter in self._adapters:
             mon = t("monitor_supported") if adapter.supports_monitor else t("monitor_not_supported")
             info = t("adapter_info", name=adapter.name, driver=adapter.driver or "?", monitor=mon)
-            status_icon = "[bold #00ff00]●[/]" if adapter.state == "connected" else "[#888]○[/]"
-            lines.append(f"  {status_icon} [bold #00aaff]{info}[/]")
+            status_icon = "[bold #00ff41]●[/]" if adapter.state == "connected" else "[#888]○[/]"
+            lines.append(f"  {status_icon} [bold #00d4ff]{info}[/]")
             if adapter.state == "connected" and adapter.current_ssid:
                 lines.append(f"    └─ {adapter.current_ssid}")
 
@@ -182,7 +182,7 @@ class WiFiScreen(Screen):
 
         if info.ip:
             status = (
-                f"[bold #00ff00]● {t('connected_to', ssid=info.ssid, ip=info.ip)}[/]\n"
+                f"[bold #00ff41]● {t('connected_to', ssid=info.ssid, ip=info.ip)}[/]\n"
                 f"  [#888]GW: {info.gateway}[/]"
             )
             if info.dns:
@@ -226,7 +226,7 @@ class WiFiScreen(Screen):
 
         def log_cb(msg):
             try:
-                log.write(f"[#00aaff]{msg}[/]")
+                log.write(f"[#00d4ff]{msg}[/]")
             except Exception:
                 pass
 
@@ -251,7 +251,7 @@ class WiFiScreen(Screen):
         for net in self._networks:
             # Signal bars
             bars = "█" * (net.signal // 20)
-            bars_colored = f"[#00ff00]{bars}[/]" if net.signal > 60 else \
+            bars_colored = f"[#00ff41]{bars}[/]" if net.signal > 60 else \
                 f"[#ffaa00]{bars}[/]" if net.signal > 30 else \
                 f"[#ff4444]{bars}[/]"
             signal_str = f"{bars_colored} {net.signal}%"
@@ -264,7 +264,7 @@ class WiFiScreen(Screen):
             # Security coloring
             sec = net.security
             if "WPA3" in sec:
-                sec = f"[#00ff00]{sec}[/]"
+                sec = f"[#00ff41]{sec}[/]"
             elif "WPA2" in sec or "WPA" in sec:
                 sec = f"[#ffaa00]{sec}[/]"
             elif "WEP" in sec:
@@ -310,7 +310,7 @@ class WiFiScreen(Screen):
         password = self.query_one("#wifi-password", Input).value
         log = self.query_one("#recon-log", RichLog)
 
-        log.write(f"[#00aaff]{t('connecting_to', ssid=self._selected_ssid)}[/]")
+        log.write(f"[#00d4ff]{t('connecting_to', ssid=self._selected_ssid)}[/]")
 
         from core.wifi_manager import connect
         success, message = await connect(
@@ -320,7 +320,7 @@ class WiFiScreen(Screen):
         )
 
         if success:
-            log.write(f"[bold #00ff00]{t('connection_success', ssid=self._selected_ssid)}[/]")
+            log.write(f"[bold #00ff41]{t('connection_success', ssid=self._selected_ssid)}[/]")
             await self._update_connection_status()
 
             # Notify app
@@ -361,8 +361,8 @@ class WiFiScreen(Screen):
             return
 
         log = self.query_one("#recon-log", RichLog)
-        log.write(f"\n[bold #00ff00]{'═' * 50}[/]")
-        log.write(f"[bold #00ff00]{t('recon_running')}[/]")
+        log.write(f"\n[bold #00ff41]{'═' * 50}[/]")
+        log.write(f"[bold #00ff41]{t('recon_running')}[/]")
 
         from core.wifi_manager import (
             get_gateway_info, get_connected_clients,
@@ -370,12 +370,12 @@ class WiFiScreen(Screen):
         )
 
         # 1. Gateway info
-        log.write(f"[#00aaff]{t('scanning_gateway')}[/]")
+        log.write(f"[#00d4ff]{t('scanning_gateway')}[/]")
         self._gateway_info = await get_gateway_info(self._connection_info.gateway)
         gw = self._gateway_info
 
         gw_text = (
-            f"[bold #00ff00]{t('router_info')}:[/] {gw.ip}"
+            f"[bold #00ff41]{t('router_info')}:[/] {gw.ip}"
             f" │ {gw.vendor or '?'}"
             f" │ {gw.mac or '?'}"
         )
@@ -383,15 +383,15 @@ class WiFiScreen(Screen):
             ports_str = ", ".join(
                 f"{p['port']}({p['service']})" for p in gw.ports
             )
-            gw_text += f"\n  [bold #00ff00]{t('router_ports')}:[/] {ports_str}"
+            gw_text += f"\n  [bold #00ff41]{t('router_ports')}:[/] {ports_str}"
 
         # 2. Internet access
-        log.write(f"[#00aaff]{t('checking_internet')}[/]")
+        log.write(f"[#00d4ff]{t('checking_internet')}[/]")
         self._internet_info = await check_internet_access()
         inet = self._internet_info
 
-        inet_status = f"[#00ff00]{t('online')}[/]" if inet.get("online") else f"[#ff4444]{t('offline')}[/]"
-        gw_text += f"\n  [bold #00ff00]{t('internet_access')}:[/] {inet_status}"
+        inet_status = f"[#00ff41]{t('online')}[/]" if inet.get("online") else f"[#ff4444]{t('offline')}[/]"
+        gw_text += f"\n  [bold #00ff41]{t('internet_access')}:[/] {inet_status}"
         if inet.get("public_ip"):
             gw_text += f" │ {t('public_ip')}: {inet['public_ip']}"
 
@@ -405,16 +405,16 @@ class WiFiScreen(Screen):
                 dhcp_str += f" │ Lease: {ci.lease_time}"
             if ci.dns:
                 dhcp_str += f" │ DNS: {', '.join(ci.dns)}"
-            gw_text += f"\n  [bold #00ff00]{t('dhcp_info')}:[/] {dhcp_str}"
+            gw_text += f"\n  [bold #00ff41]{t('dhcp_info')}:[/] {dhcp_str}"
 
         self.query_one("#recon-info", Static).update(gw_text)
 
         # 3. Connected clients
-        log.write(f"[#00aaff]{t('discovering_clients')}[/]")
+        log.write(f"[#00d4ff]{t('discovering_clients')}[/]")
         self._clients = await get_connected_clients(ci.subnet or ci.gateway + "/24")
 
         if self._clients:
-            log.write(f"\n[bold #00ff00]{t('clients_in_network', count=len(self._clients))}[/]")
+            log.write(f"\n[bold #00ff41]{t('clients_in_network', count=len(self._clients))}[/]")
             log.write(
                 f"  [bold]{'IP':<16} {'MAC':<18} {'Vendor':<16} {'Hostname'}[/]"
             )
@@ -449,7 +449,7 @@ class WiFiScreen(Screen):
         # Update status with client count
         status = self.query_one("#wifi-status", Static)
         status_text = (
-            f"[bold #00ff00]● {t('connected_to', ssid=ci.ssid, ip=ci.ip)}[/]\n"
+            f"[bold #00ff41]● {t('connected_to', ssid=ci.ssid, ip=ci.ip)}[/]\n"
             f"  [#888]GW: {ci.gateway} ({gw.vendor or '?'})[/]"
         )
         if ci.dns:
@@ -458,7 +458,7 @@ class WiFiScreen(Screen):
         status_text += f" [#888]│ {t('network_clients')}: {len(self._clients)}[/]"
         status.update(status_text)
 
-        log.write(f"\n[bold #00ff00]{t('recon_complete')}[/]")
+        log.write(f"\n[bold #00ff41]{t('recon_complete')}[/]")
         log.write(f"[#30363d]{'═' * 50}[/]")
 
     # ═══ Event Handlers ═══
@@ -510,7 +510,7 @@ class WiFiScreen(Screen):
                     if net.wps_enabled:
                         sec_info += f" [#ff4444]{t('wps_warning')}[/]"
                     label.update(
-                        f"[bold #00ff00]{t('selected_network')}:[/] "
+                        f"[bold #00ff41]{t('selected_network')}:[/] "
                         f"[bold]{self._selected_ssid}[/]{sec_info}"
                     )
 

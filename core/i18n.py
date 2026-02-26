@@ -264,6 +264,14 @@ TRANSLATIONS = {
         "col_ports": "Ports",
         "col_type": "Type",
         "col_risk": "Risk",
+
+        # ─── Scan Controls ───
+        "stop_scan": "ABORT",
+        "view_results": "VIEW INTEL",
+        "scan_aborted": "Scan aborted",
+        "status_standby": "STANDBY",
+        "status_scanning": "SCANNING",
+        "execute_scan": "EXECUTE SCAN",
     },
 
     "ru": {
@@ -518,6 +526,14 @@ TRANSLATIONS = {
         "col_ports": "Порты",
         "col_type": "Тип",
         "col_risk": "Риск",
+
+        # ─── Управление сканированием ───
+        "stop_scan": "СТОП",
+        "view_results": "РЕЗУЛЬТАТЫ",
+        "scan_aborted": "Сканирование прервано",
+        "status_standby": "ГОТОВ",
+        "status_scanning": "СКАНИРОВАНИЕ",
+        "execute_scan": "НАЧАТЬ СКАНИРОВАНИЕ",
     },
 }
 

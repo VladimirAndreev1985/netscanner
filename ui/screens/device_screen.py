@@ -26,25 +26,24 @@ class DeviceScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #00ff00] {t('device_detail')} [/] │ "
-            f"[#8b949e]B[/] {t('back')} │ [#8b949e]D[/] {t('deep_scan')} │ "
-            f"[#8b949e]C[/] {t('check_creds')}",
+            "[bold #00ff41]\u25c6 NETSCANNER[/] [#1a3a1a]//[/] "
+            "[#00d4ff]ASSET PROFILE[/]",
             id="header",
         )
 
         with ScrollableContainer(id="detail-container"):
             yield Static("", id="device-info")
-            yield Static(f"[bold #00ff00]{t('open_ports')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('open_ports')}[/]", classes="section-title")
             yield Static("", id="ports-info")
-            yield Static(f"[bold #00ff00]{t('vulnerabilities')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('vulnerabilities')}[/]", classes="section-title")
             yield Static("", id="vuln-info")
-            yield Static(f"[bold #00ff00]{t('credentials')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('credentials')}[/]", classes="section-title")
             yield Static("", id="creds-info")
-            yield Static(f"[bold #00ff00]{t('rtsp_streams')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('rtsp_streams')}[/]", classes="section-title")
             yield Static("", id="rtsp-info")
-            yield Static(f"[bold #00ff00]{t('onvif_info')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('onvif_info')}[/]", classes="section-title")
             yield Static("", id="onvif-info")
-            yield Static(f"[bold #00ff00]{t('additional_info')}[/]", classes="section-title")
+            yield Static(f"[bold #00ff41]{t('additional_info')}[/]", classes="section-title")
             yield Static("", id="extra-info")
 
             with Horizontal(id="action-buttons"):
@@ -59,7 +58,7 @@ class DeviceScreen(Screen):
             yield RichLog(id="action-log", wrap=True, max_lines=100, markup=True)
 
         yield Static(
-            f" [#8b949e]{t('footer_device')}[/]",
+            f" [#3a4a3a]{t('footer_device')}[/]",
             id="footer",
         )
 
@@ -82,22 +81,22 @@ class DeviceScreen(Screen):
         na = t("not_available")
         risk_color = {
             "critical": "#ff0000", "high": "#ff6600",
-            "medium": "#ffaa00", "low": "#00aaff", "info": "#888888"
+            "medium": "#ffaa00", "low": "#00d4ff", "info": "#3a4a3a"
         }.get(dev.risk_level, "#888")
 
         info = (
-            f"[bold #00ff00]IP:[/] {dev.ip}  "
-            f"[bold #00ff00]MAC:[/] {dev.mac or na}  "
-            f"[bold #00ff00]Hostname:[/] {dev.hostname or na}\n"
-            f"[bold #00ff00]Vendor:[/] {dev.vendor or na}  "
-            f"[bold #00ff00]Brand:[/] {dev.brand or na}  "
-            f"[bold #00ff00]Model:[/] {dev.model or na}\n"
-            f"[bold #00ff00]Type:[/] {dev.device_type}  "
-            f"[bold #00ff00]OS:[/] {dev.os_guess or na}  "
-            f"[bold #00ff00]Firmware:[/] {dev.firmware_version or na}\n"
-            f"[bold #00ff00]Risk Score:[/] [{risk_color}]{dev.risk_score:.1f}/10 "
+            f"[bold #00ff41]IP:[/] {dev.ip}  "
+            f"[bold #00ff41]MAC:[/] {dev.mac or na}  "
+            f"[bold #00ff41]Hostname:[/] {dev.hostname or na}\n"
+            f"[bold #00ff41]Vendor:[/] {dev.vendor or na}  "
+            f"[bold #00ff41]Brand:[/] {dev.brand or na}  "
+            f"[bold #00ff41]Model:[/] {dev.model or na}\n"
+            f"[bold #00ff41]Type:[/] {dev.device_type}  "
+            f"[bold #00ff41]OS:[/] {dev.os_guess or na}  "
+            f"[bold #00ff41]Firmware:[/] {dev.firmware_version or na}\n"
+            f"[bold #00ff41]Risk Score:[/] [{risk_color}]{dev.risk_score:.1f}/10 "
             f"({dev.risk_level.upper()})[/]  "
-            f"[bold #00ff00]Web:[/] {dev.web_interface or na}"
+            f"[bold #00ff41]Web:[/] {dev.web_interface or na}"
         )
         self.query_one("#device-info", Static).update(info)
 
@@ -114,7 +113,7 @@ class DeviceScreen(Screen):
             product = svc.get("product", "")
             version = svc.get("version", "")
             svc_str = f"{name} {product} {version}".strip()
-            lines.append(f"  [#00aaff]{port:>5}[/]/tcp  {svc_str or 'unknown'}")
+            lines.append(f"  [#00d4ff]{port:>5}[/]/tcp  {svc_str or 'unknown'}")
 
         self.query_one("#ports-info", Static).update("\n".join(lines))
 
@@ -128,7 +127,7 @@ class DeviceScreen(Screen):
         for vuln in dev.vulnerabilities:
             color = {
                 "critical": "#ff0000", "high": "#ff6600",
-                "medium": "#ffaa00", "low": "#00aaff"
+                "medium": "#ffaa00", "low": "#00d4ff"
             }.get(vuln.severity, "#888")
 
             exploit_tag = " [bold #ff0000][EXPLOIT][/]" if vuln.exploit_available else ""
@@ -170,7 +169,7 @@ class DeviceScreen(Screen):
             self.query_one("#rtsp-info", Static).update(f"[#888]{t('no_rtsp')}[/]")
             return
 
-        lines = [f"  [#00aaff]{url}[/]" for url in dev.rtsp_urls]
+        lines = [f"  [#00d4ff]{url}[/]" for url in dev.rtsp_urls]
         self.query_one("#rtsp-info", Static).update("\n".join(lines))
 
     def _render_onvif(self) -> None:
@@ -181,7 +180,7 @@ class DeviceScreen(Screen):
 
         lines = []
         for key, value in dev.onvif_info.items():
-            lines.append(f"  [#00ff00]{key}:[/] {value}")
+            lines.append(f"  [#00ff41]{key}:[/] {value}")
         self.query_one("#onvif-info", Static).update("\n".join(lines))
 
     def _render_extra(self) -> None:
@@ -193,18 +192,18 @@ class DeviceScreen(Screen):
         lines = []
         for key, value in dev.extra_info.items():
             if isinstance(value, dict):
-                lines.append(f"  [#00ff00]{key}:[/]")
+                lines.append(f"  [#00ff41]{key}:[/]")
                 for k, v in value.items():
                     lines.append(f"    {k}: {v}")
             elif isinstance(value, list):
-                lines.append(f"  [#00ff00]{key}:[/] ({len(value)} items)")
+                lines.append(f"  [#00ff41]{key}:[/] ({len(value)} items)")
                 for item in value[:5]:
                     if isinstance(item, dict):
                         lines.append(f"    {item.get('name', item)}")
                     else:
                         lines.append(f"    {item}")
             else:
-                lines.append(f"  [#00ff00]{key}:[/] {value}")
+                lines.append(f"  [#00ff41]{key}:[/] {value}")
 
         self.query_one("#extra-info", Static).update("\n".join(lines))
 
