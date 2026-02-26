@@ -165,6 +165,7 @@ class ScanScreen(Screen):
         self.query_one(f"#mode-{mode}", Button).add_class("selected")
         self._scan_type = mode
         self._update_mode_description()
+        self._update_rescan_label()
 
     def _update_mode_description(self) -> None:
         descriptions = {
@@ -269,6 +270,7 @@ class ScanScreen(Screen):
             return
 
         self._refresh_found_table()
+        self._update_rescan_label()
 
     def _refresh_found_table(self) -> None:
         """Refresh the found devices table with current selection state."""
@@ -316,6 +318,16 @@ class ScanScreen(Screen):
             self._all_selected = True
             self.query_one("#select-all-btn", Button).label = t("deselect_all")
         self._refresh_found_table()
+
+    def _update_rescan_label(self) -> None:
+        """Update rescan button label to show current scan mode."""
+        try:
+            mode = self._scan_type if self._scan_type != "autopwn" else "deep"
+            mode_name = t(mode) if mode != "deep" else t("deep")
+            btn = self.query_one("#rescan-btn", Button)
+            btn.label = f"{t('rescan_selected')} [{mode_name}]"
+        except Exception:
+            pass
 
     def _rescan_selected(self) -> None:
         """Rescan selected devices."""

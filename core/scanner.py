@@ -188,7 +188,7 @@ async def _nmap_direct(target: str, args: list[str],
         logger.error("nmap not found!")
         return devices
 
-    cmd = ["nmap", "-oX", "-"] + args + [target]
+    cmd = ["nmap", "-oX", "-"] + args + target.split()
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -267,22 +267,27 @@ async def full_scan(target: str, scan_type: str = "normal",
     """Full scan pipeline: ARP discovery → port scan → merge results."""
     all_devices: dict[str, Device] = {}
 
-    # Phase 1: ARP discovery
-    if progress_callback:
-        progress_callback("arp", 0, "ARP Discovery...")
+    # Handle comma-separated targets (rescan of specific IPs)
+    is_targeted = "," in target
+    nmap_target = target.replace(",", " ") if is_targeted else target
 
-    arp_devices = await arp_scan(target)
-    for dev in arp_devices:
-        all_devices[dev.ip] = dev
+    # Phase 1: ARP discovery (skip for targeted rescan — hosts already known)
+    if not is_targeted:
+        if progress_callback:
+            progress_callback("arp", 0, "ARP Discovery...")
 
-    if progress_callback:
-        progress_callback("arp", 100, f"Found {len(arp_devices)} hosts")
+        arp_devices = await arp_scan(target)
+        for dev in arp_devices:
+            all_devices[dev.ip] = dev
+
+        if progress_callback:
+            progress_callback("arp", 100, f"Found {len(arp_devices)} hosts")
 
     # Phase 2: Port scanning
     if progress_callback:
         progress_callback("nmap", 0, "Port scanning...")
 
-    nmap_devices = await nmap_scan(target, scan_type)
+    nmap_devices = await nmap_scan(nmap_target, scan_type)
 
     # Merge results
     for dev in nmap_devices:
