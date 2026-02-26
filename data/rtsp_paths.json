@@ -1,0 +1,190 @@
+{
+  "_description": "RTSP stream paths by camera vendor (200+ paths)",
+  "_updated": "2025-01-01",
+  "hikvision": [
+    "/Streaming/Channels/101",
+    "/Streaming/Channels/102",
+    "/Streaming/Channels/201",
+    "/Streaming/Channels/1",
+    "/h264/ch1/main/av_stream",
+    "/h264/ch1/sub/av_stream",
+    "/ISAPI/Streaming/channels/101",
+    "/ISAPI/Streaming/channels/102",
+    "/live/ch00_0",
+    "/live/ch00_1"
+  ],
+  "dahua": [
+    "/cam/realmonitor?channel=1&subtype=0",
+    "/cam/realmonitor?channel=1&subtype=1",
+    "/cam/realmonitor?channel=1&subtype=2",
+    "/live",
+    "/live/ch0",
+    "/live/ch1",
+    "/media/video1",
+    "/media/video2"
+  ],
+  "axis": [
+    "/axis-media/media.amp",
+    "/axis-media/media.amp?videocodec=h264",
+    "/mpeg4/media.amp",
+    "/mjpg/video.mjpg",
+    "/live.sdp",
+    "/live/ch00_0"
+  ],
+  "reolink": [
+    "/h264Preview_01_main",
+    "/h264Preview_01_sub",
+    "/Preview_01_main",
+    "/Preview_01_sub"
+  ],
+  "foscam": [
+    "/videoMain",
+    "/videoSub",
+    "/video1",
+    "/video2",
+    "/video.pro",
+    "/11",
+    "/12"
+  ],
+  "amcrest": [
+    "/cam/realmonitor?channel=1&subtype=0",
+    "/cam/realmonitor?channel=1&subtype=1"
+  ],
+  "vivotek": [
+    "/live.sdp",
+    "/live2.sdp",
+    "/video.mp4",
+    "/media/video1",
+    "/rtsp_tunnel"
+  ],
+  "samsung": [
+    "/profile1/media.smp",
+    "/profile2/media.smp",
+    "/live/ch00_0",
+    "/live/ch01_0"
+  ],
+  "panasonic": [
+    "/MediaInput/h264",
+    "/MediaInput/h264/stream_1",
+    "/MediaInput/h264/stream_2",
+    "/nphMpeg4/g726-640x480",
+    "/nphMpeg4/nil-320x240"
+  ],
+  "tplink": [
+    "/stream1",
+    "/stream2",
+    "/h264_stream",
+    "/live/ch00_0",
+    "/live/ch00_1"
+  ],
+  "dlink": [
+    "/live1.sdp",
+    "/live2.sdp",
+    "/play1.sdp",
+    "/play2.sdp",
+    "/video1.sdp",
+    "/live/ch00_0",
+    "/live/ch01_0"
+  ],
+  "ubiquiti": [
+    "/live",
+    "/s0",
+    "/s1",
+    "/uvc_live"
+  ],
+  "bosch": [
+    "/rtsp_tunnel",
+    "/video",
+    "/video?inst=1",
+    "/video?inst=2"
+  ],
+  "honeywell": [
+    "/1",
+    "/2",
+    "/h264",
+    "/live/ch00_0"
+  ],
+  "geovision": [
+    "/CH001.sdp",
+    "/CH002.sdp",
+    "/live.sdp",
+    "/live1.sdp"
+  ],
+  "avtech": [
+    "/live/ch00_0",
+    "/live/ch00_1",
+    "/video.mjpg"
+  ],
+  "wanscam": [
+    "/live/ch0",
+    "/live/ch1",
+    "/1",
+    "/11"
+  ],
+  "tenvis": [
+    "/11",
+    "/12",
+    "/video.pro"
+  ],
+  "acti": [
+    "/cgi-bin/cmd/encoder?ESSION_ID=0",
+    "/live1.sdp",
+    "/live2.sdp"
+  ],
+  "generic": [
+    "/",
+    "/live",
+    "/live.sdp",
+    "/stream",
+    "/stream1",
+    "/stream2",
+    "/video",
+    "/video1",
+    "/video2",
+    "/h264",
+    "/h264.sdp",
+    "/mpeg4",
+    "/mpeg4.sdp",
+    "/media",
+    "/media.amp",
+    "/ch0_0.h264",
+    "/ch0_1.h264",
+    "/cam/realmonitor?channel=1&subtype=0",
+    "/cam/realmonitor?channel=1&subtype=1",
+    "/live/ch00_0",
+    "/live/ch00_1",
+    "/live/ch01_0",
+    "/1",
+    "/2",
+    "/11",
+    "/12",
+    "/0",
+    "/play1.sdp",
+    "/play2.sdp",
+    "/profile1/media.smp",
+    "/profile2/media.smp",
+    "/videoMain",
+    "/videoSub",
+    "/Streaming/Channels/101",
+    "/Streaming/Channels/102",
+    "/h264Preview_01_main",
+    "/h264Preview_01_sub",
+    "/axis-media/media.amp",
+    "/MediaInput/h264",
+    "/onvif1",
+    "/onvif2",
+    "/user=admin&password=&channel=1&stream=0.sdp",
+    "/rtsp_tunnel",
+    "/s0",
+    "/s1",
+    "/main",
+    "/sub",
+    "/av0_0",
+    "/av0_1",
+    "/media/video1",
+    "/media/video2",
+    "/live1.sdp",
+    "/live2.sdp",
+    "/nphMpeg4/nil-320x240"
+  ]
+}

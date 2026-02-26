@@ -1,0 +1,112 @@
+{
+  "_description": "Default credentials database for cameras and IoT devices",
+  "_updated": "2025-01-01",
+  "cameras": {
+    "hikvision": [
+      {"username": "admin", "password": "12345"},
+      {"username": "admin", "password": "admin12345"},
+      {"username": "admin", "password": "a]12345"},
+      {"username": "admin", "password": ""},
+      {"username": "admin", "password": "password"},
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "hiklinux"}
+    ],
+    "dahua": [
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": ""},
+      {"username": "admin", "password": "123456"},
+      {"username": "admin", "password": "888888"},
+      {"username": "admin", "password": "666666"},
+      {"username": "888888", "password": "888888"},
+      {"username": "666666", "password": "666666"},
+      {"username": "default", "password": "default"}
+    ],
+    "axis": [
+      {"username": "root", "password": "pass"},
+      {"username": "root", "password": "root"},
+      {"username": "root", "password": ""},
+      {"username": "admin", "password": "admin"}
+    ],
+    "reolink": [
+      {"username": "admin", "password": ""},
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "123456"}
+    ],
+    "foscam": [
+      {"username": "admin", "password": ""},
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "123456"}
+    ],
+    "amcrest": [
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": ""}
+    ],
+    "vivotek": [
+      {"username": "root", "password": ""},
+      {"username": "root", "password": "root"}
+    ],
+    "samsung": [
+      {"username": "admin", "password": "4321"},
+      {"username": "admin", "password": "1111111"},
+      {"username": "root", "password": "root"},
+      {"username": "admin", "password": "admin"}
+    ],
+    "panasonic": [
+      {"username": "admin", "password": "12345"},
+      {"username": "admin", "password": "admin"}
+    ],
+    "tplink": [
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "123456"}
+    ],
+    "dlink": [
+      {"username": "admin", "password": ""},
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "password"}
+    ],
+    "ubiquiti": [
+      {"username": "ubnt", "password": "ubnt"},
+      {"username": "admin", "password": "admin"}
+    ],
+    "bosch": [
+      {"username": "admin", "password": "admin"},
+      {"username": "service", "password": "service"}
+    ],
+    "honeywell": [
+      {"username": "admin", "password": "1234"},
+      {"username": "admin", "password": "admin"}
+    ],
+    "generic": [
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "12345"},
+      {"username": "admin", "password": "123456"},
+      {"username": "admin", "password": "password"},
+      {"username": "admin", "password": "1234"},
+      {"username": "admin", "password": ""},
+      {"username": "root", "password": "root"},
+      {"username": "root", "password": ""},
+      {"username": "root", "password": "pass"},
+      {"username": "user", "password": "user"},
+      {"username": "guest", "password": "guest"},
+      {"username": "operator", "password": "operator"},
+      {"username": "supervisor", "password": "supervisor"}
+    ]
+  },
+  "routers": {
+    "generic": [
+      {"username": "admin", "password": "admin"},
+      {"username": "admin", "password": "password"},
+      {"username": "admin", "password": "1234"},
+      {"username": "admin", "password": ""},
+      {"username": "root", "password": "root"}
+    ]
+  },
+  "iot": {
+    "generic": [
+      {"username": "admin", "password": "admin"},
+      {"username": "root", "password": "root"},
+      {"username": "root", "password": ""},
+      {"username": "user", "password": "user"}
+    ]
+  }
+}

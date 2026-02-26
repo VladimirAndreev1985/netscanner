@@ -1,0 +1,151 @@
+{
+  "_description": "CVE database for cameras and IoT devices. Auto-updated from NVD.",
+  "_last_updated": "2025-01-01",
+  "_version": "1.0",
+  "vulnerabilities": [
+    {
+      "cve_id": "CVE-2021-36260",
+      "vendor": "hikvision",
+      "product": "multiple IP cameras and NVRs",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "Command injection vulnerability in Hikvision web server. Allows unauthenticated remote code execution.",
+      "affected_firmware": "< V5.5.800 build 210628",
+      "exploit_available": true,
+      "msf_module": "auxiliary/scanner/http/hikvision_cve_2021_36260",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-36260"]
+    },
+    {
+      "cve_id": "CVE-2017-7921",
+      "vendor": "hikvision",
+      "product": "multiple IP cameras",
+      "cvss_score": 10.0,
+      "severity": "critical",
+      "description": "Hikvision improper authentication allows access to device configuration via magic string.",
+      "affected_firmware": "before V5.4.5",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2017-7921"]
+    },
+    {
+      "cve_id": "CVE-2021-33044",
+      "vendor": "dahua",
+      "product": "multiple IP cameras and NVRs",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "Authentication bypass during the login process in Dahua products.",
+      "affected_firmware": "multiple versions",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-33044"]
+    },
+    {
+      "cve_id": "CVE-2021-33045",
+      "vendor": "dahua",
+      "product": "multiple IP cameras and NVRs",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "Authentication bypass in Dahua devices allowing access without credentials.",
+      "affected_firmware": "multiple versions",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-33045"]
+    },
+    {
+      "cve_id": "CVE-2020-25078",
+      "vendor": "dlink",
+      "product": "DCS-2530L, DCS-2670L",
+      "cvss_score": 7.5,
+      "severity": "high",
+      "description": "D-Link IP camera password disclosure via /config/getuser endpoint.",
+      "affected_firmware": "multiple",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2020-25078"]
+    },
+    {
+      "cve_id": "CVE-2018-10088",
+      "vendor": "axis",
+      "product": "multiple cameras",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "Buffer overflow in Axis camera httpd process, allows remote code execution.",
+      "affected_firmware": "before 8.40.1",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2018-10088"]
+    },
+    {
+      "cve_id": "CVE-2022-30563",
+      "vendor": "dahua",
+      "product": "multiple products",
+      "cvss_score": 7.4,
+      "severity": "high",
+      "description": "Dahua ONVIF implementation vulnerability allowing authentication bypass.",
+      "affected_firmware": "multiple versions",
+      "exploit_available": false,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2022-30563"]
+    },
+    {
+      "cve_id": "CVE-2023-28808",
+      "vendor": "hikvision",
+      "product": "Hybrid SAN and cluster storage",
+      "cvss_score": 9.1,
+      "severity": "critical",
+      "description": "Access control vulnerability in Hikvision storage products.",
+      "affected_firmware": "before V2.3.8-8",
+      "exploit_available": false,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2023-28808"]
+    },
+    {
+      "cve_id": "CVE-2019-3929",
+      "vendor": "multiple",
+      "product": "Crestron, Barco, Extron, Teq AV, SHARP, Optoma, Blackbox, InFocus",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "Command injection in presentation/collaboration devices via cgi-bin.",
+      "affected_firmware": "multiple",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2019-3929"]
+    },
+    {
+      "cve_id": "CVE-2020-8863",
+      "vendor": "dlink",
+      "product": "DIR-867, DIR-878, DIR-882",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "D-Link HNAP authentication bypass allowing full device access.",
+      "affected_firmware": "before 1.20B10",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2020-8863"]
+    },
+    {
+      "cve_id": "CVE-2023-6895",
+      "vendor": "hikvision",
+      "product": "HiSecOS devices",
+      "cvss_score": 9.8,
+      "severity": "critical",
+      "description": "OS command injection in Hikvision HiSecOS network devices.",
+      "affected_firmware": "multiple",
+      "exploit_available": true,
+      "msf_module": "",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2023-6895"]
+    },
+    {
+      "cve_id": "CVE-2021-44228",
+      "vendor": "multiple",
+      "product": "Log4j-based IoT devices",
+      "cvss_score": 10.0,
+      "severity": "critical",
+      "description": "Log4Shell — RCE via Log4j in Java-based IoT devices and NVRs.",
+      "affected_firmware": "Log4j < 2.17.0",
+      "exploit_available": true,
+      "msf_module": "exploit/multi/http/log4shell_header_injection",
+      "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-44228"]
+    }
+  ]
+}

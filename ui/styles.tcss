@@ -1,0 +1,412 @@
+/* NetScanner TUI Styles — Kali Linux Dark Theme */
+
+Screen {
+    background: #0a0a0f;
+    color: #d0d0d0;
+}
+
+/* ═══ Header ═══ */
+#header {
+    dock: top;
+    height: 3;
+    background: #0d1117;
+    color: #00ff00;
+    text-align: center;
+    text-style: bold;
+    border-bottom: solid #00ff00;
+    padding: 0 1;
+}
+
+/* ═══ Footer / Status Bar ═══ */
+#footer {
+    dock: bottom;
+    height: 1;
+    background: #161b22;
+    color: #8b949e;
+    padding: 0 1;
+}
+
+/* ═══ Navigation Tabs ═══ */
+#nav-bar {
+    dock: top;
+    height: 3;
+    background: #0d1117;
+    layout: horizontal;
+    padding: 0 1;
+}
+
+.nav-btn {
+    width: auto;
+    min-width: 16;
+    height: 3;
+    background: #161b22;
+    color: #8b949e;
+    border: solid #30363d;
+    margin: 0 1;
+    text-align: center;
+    padding: 0 2;
+}
+
+.nav-btn:hover {
+    background: #1a2332;
+    color: #00ff00;
+}
+
+.nav-btn.active {
+    background: #00ff00;
+    color: #000000;
+    text-style: bold;
+}
+
+/* ═══ Scan Screen ═══ */
+#scan-container {
+    padding: 1 2;
+}
+
+#target-input {
+    width: 100%;
+    margin: 1 0;
+}
+
+#scan-options {
+    layout: horizontal;
+    height: auto;
+    margin: 1 0;
+}
+
+.scan-mode-btn {
+    min-width: 14;
+    height: 3;
+    margin: 0 1;
+    background: #161b22;
+    color: #d0d0d0;
+    border: solid #30363d;
+    text-align: center;
+}
+
+.scan-mode-btn:hover {
+    background: #1a2332;
+    border: solid #00ff00;
+}
+
+.scan-mode-btn.selected {
+    background: #003300;
+    color: #00ff00;
+    border: solid #00ff00;
+    text-style: bold;
+}
+
+#subnet-list {
+    height: auto;
+    max-height: 12;
+    background: #0d1117;
+    border: solid #30363d;
+    margin: 1 0;
+    padding: 1;
+}
+
+#start-scan-btn {
+    width: 100%;
+    height: 3;
+    background: #00aa00;
+    color: #000000;
+    text-style: bold;
+    text-align: center;
+    margin: 1 0;
+    border: solid #00ff00;
+}
+
+#start-scan-btn:hover {
+    background: #00ff00;
+}
+
+#auto-detect-btn {
+    width: auto;
+    min-width: 20;
+    height: 3;
+    background: #1a2332;
+    color: #00aaff;
+    border: solid #00aaff;
+    text-align: center;
+    margin: 0 1;
+}
+
+#auto-detect-btn:hover {
+    background: #00aaff;
+    color: #000000;
+}
+
+/* ═══ Results Screen ═══ */
+#results-container {
+    padding: 1 2;
+}
+
+#filter-bar {
+    layout: horizontal;
+    height: 3;
+    margin: 0 0 1 0;
+}
+
+.filter-btn {
+    min-width: 12;
+    height: 3;
+    margin: 0 1;
+    background: #161b22;
+    color: #8b949e;
+    border: solid #30363d;
+    text-align: center;
+}
+
+.filter-btn:hover {
+    border: solid #00ff00;
+    color: #d0d0d0;
+}
+
+.filter-btn.active {
+    background: #003300;
+    color: #00ff00;
+    border: solid #00ff00;
+}
+
+#device-table {
+    height: 1fr;
+    background: #0d1117;
+    border: solid #30363d;
+}
+
+#stats-bar {
+    dock: bottom;
+    height: 3;
+    background: #0d1117;
+    border-top: solid #30363d;
+    padding: 0 2;
+    layout: horizontal;
+}
+
+.stat-item {
+    width: auto;
+    min-width: 18;
+    height: 3;
+    text-align: center;
+    padding: 0 2;
+}
+
+.stat-total { color: #00aaff; }
+.stat-cameras { color: #ff6600; }
+.stat-vulnerable { color: #ff0000; }
+.stat-compromised { color: #ff4444; text-style: bold; }
+
+/* ═══ Device Detail Screen ═══ */
+#detail-container {
+    padding: 1 2;
+}
+
+#device-info {
+    height: auto;
+    background: #0d1117;
+    border: solid #30363d;
+    padding: 1 2;
+    margin: 0 0 1 0;
+}
+
+#vuln-list {
+    height: auto;
+    max-height: 15;
+    background: #0d1117;
+    border: solid #30363d;
+    padding: 1;
+    margin: 0 0 1 0;
+}
+
+#creds-list {
+    height: auto;
+    max-height: 10;
+    background: #0d1117;
+    border: solid #30363d;
+    padding: 1;
+    margin: 0 0 1 0;
+}
+
+#action-buttons {
+    layout: horizontal;
+    height: 3;
+    margin: 1 0;
+}
+
+.action-btn {
+    min-width: 16;
+    height: 3;
+    margin: 0 1;
+    background: #161b22;
+    color: #d0d0d0;
+    border: solid #30363d;
+    text-align: center;
+}
+
+.action-btn:hover {
+    background: #1a2332;
+    border: solid #00ff00;
+    color: #00ff00;
+}
+
+.action-btn.danger {
+    border: solid #ff4444;
+    color: #ff4444;
+}
+
+.action-btn.danger:hover {
+    background: #ff4444;
+    color: #000000;
+}
+
+/* ═══ Auto-Pwn Screen ═══ */
+#autopwn-container {
+    padding: 1 2;
+}
+
+#pwn-log {
+    height: 1fr;
+    background: #0a0a0f;
+    border: solid #30363d;
+    padding: 1;
+    overflow-y: auto;
+}
+
+#pwn-stats {
+    layout: horizontal;
+    height: 3;
+    background: #0d1117;
+    border: solid #30363d;
+    margin: 1 0;
+    padding: 0 1;
+}
+
+#pwn-mode-select {
+    layout: horizontal;
+    height: 3;
+    margin: 1 0;
+}
+
+.mode-btn {
+    min-width: 16;
+    height: 3;
+    margin: 0 1;
+    background: #161b22;
+    color: #d0d0d0;
+    border: solid #30363d;
+    text-align: center;
+}
+
+.mode-btn.passive { border: solid #00aaff; color: #00aaff; }
+.mode-btn.normal { border: solid #ffaa00; color: #ffaa00; }
+.mode-btn.aggressive { border: solid #ff0000; color: #ff0000; }
+
+.mode-btn:hover { text-style: bold; }
+
+.mode-btn.selected {
+    text-style: bold;
+}
+
+.mode-btn.passive.selected { background: #00aaff; color: #000; }
+.mode-btn.normal.selected { background: #ffaa00; color: #000; }
+.mode-btn.aggressive.selected { background: #ff0000; color: #fff; }
+
+/* ═══ Gallery Screen ═══ */
+#gallery-container {
+    padding: 1 2;
+}
+
+.gallery-item {
+    height: auto;
+    background: #0d1117;
+    border: solid #30363d;
+    padding: 1;
+    margin: 0 0 1 0;
+}
+
+/* ═══ Progress Bar ═══ */
+#scan-progress {
+    height: 3;
+    margin: 1 0;
+}
+
+ProgressBar {
+    padding: 0 1;
+}
+
+ProgressBar > .bar--bar {
+    color: #00ff00;
+}
+
+ProgressBar > .bar--complete {
+    color: #00ff00;
+}
+
+/* ═══ Common ═══ */
+.section-title {
+    text-style: bold;
+    color: #00ff00;
+    margin: 1 0 0 0;
+}
+
+.risk-critical { color: #ff0000; text-style: bold; }
+.risk-high { color: #ff6600; }
+.risk-medium { color: #ffaa00; }
+.risk-low { color: #00aaff; }
+.risk-info { color: #888888; }
+
+.success { color: #00ff00; }
+.warning { color: #ffaa00; }
+.danger { color: #ff0000; }
+.info { color: #00aaff; }
+
+.hidden { display: none; }
+
+DataTable {
+    background: #0d1117;
+}
+
+DataTable > .datatable--header {
+    background: #161b22;
+    color: #00ff00;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #1a2332;
+    color: #ffffff;
+}
+
+DataTable > .datatable--hover {
+    background: #111822;
+}
+
+Input {
+    background: #0d1117;
+    border: solid #30363d;
+    color: #d0d0d0;
+}
+
+Input:focus {
+    border: solid #00ff00;
+}
+
+RichLog {
+    background: #0a0a0f;
+    color: #d0d0d0;
+    border: solid #30363d;
+    padding: 1;
+}
+
+Select {
+    background: #0d1117;
+    border: solid #30363d;
+}
+
+Select:focus {
+    border: solid #00ff00;
+}
+
+LoadingIndicator {
+    color: #00ff00;
+}
