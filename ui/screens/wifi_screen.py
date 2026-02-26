@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from textual.screen import Screen
 from textual.app import ComposeResult
 from textual.widgets import Static, Button, Input, RichLog, DataTable
@@ -43,6 +44,13 @@ class WiFiScreen(Screen):
         self._internet_info = {}
         self._scanning = False
         self._quick_scan_cache: dict[str, object] = {}  # BSSID -> WiFiNetwork from quick scan
+        # Deep scan state (continuous monitor mode)
+        self._mon_iface: str | None = None
+        self._airodump_proc = None
+        self._csv_path: str | None = None
+        self._tmp_prefix: str | None = None
+        self._scan_timer = None
+        self._scan_start: float = 0
 
     def compose(self) -> ComposeResult:
         yield Static(
@@ -78,6 +86,10 @@ class WiFiScreen(Screen):
                     classes="action-btn",
                 )
                 yield Button("⟳", id="wifi-refresh", classes="action-btn")
+                yield Button(
+                    t("stop_scan"), id="wifi-stop-scan",
+                    variant="error", classes="action-btn",
+                )
 
             yield DataTable(id="wifi-networks")
             yield ScanProgress()
@@ -140,6 +152,9 @@ class WiFiScreen(Screen):
             t("network_bssid"),
         )
         table.cursor_type = "row"
+
+        # Hide stop button initially
+        self.query_one("#wifi-stop-scan", Button).display = False
 
         # Auto-detect adapters
         asyncio.create_task(self._load_adapters())
@@ -229,7 +244,12 @@ class WiFiScreen(Screen):
         self._scanning = False
 
     async def _deep_scan(self) -> None:
-        """Deep WiFi scan using airodump-ng (monitor mode)."""
+        """Start continuous deep WiFi scan (monitor mode).
+
+        Enters monitor mode, starts airodump-ng, and uses a Textual timer
+        to periodically read the CSV and update the table in real-time.
+        Scanning continues until user presses Stop.
+        """
         if self._scanning:
             return
         self._scanning = True
@@ -244,8 +264,7 @@ class WiFiScreen(Screen):
                 pass
 
         try:
-            # If no quick scan was done yet, run one first to get WPS/vendor data
-            # (airodump CSV doesn't include WPS info; nmcli does)
+            # Pre-scan for WPS/vendor data (nmcli — airodump CSV lacks WPS)
             if not self._quick_scan_cache:
                 progress.update_progress(5, t("scanning_wifi"))
                 log_cb("Quick pre-scan for WPS/vendor data...")
@@ -258,37 +277,61 @@ class WiFiScreen(Screen):
 
             progress.update_progress(10, t("starting_monitor"))
 
-            def update_cb(networks, elapsed, total):
-                """Real-time table update callback during scan."""
-                try:
-                    # Merge WPS/vendor data from quick scan cache
-                    for net in networks:
-                        cached = self._quick_scan_cache.get(net.bssid)
-                        if cached:
-                            if cached.wps_enabled:
-                                net.wps_enabled = True
-                            if cached.router_vendor and not net.router_vendor:
-                                net.router_vendor = cached.router_vendor
-                    self._networks = networks
-                    self._populate_network_table()
-                    pct = 10 + int((elapsed / total) * 80)
-                    progress.update_progress(
-                        pct,
-                        f"Scanning... {elapsed}/{total}s — {len(networks)} networks"
-                    )
-                except Exception as exc:
-                    logger.error(f"update_cb error: {exc}")
-
-            from core.wifi_manager import scan_networks_deep
-            self._networks = await scan_networks_deep(
-                self._selected_adapter,
-                duration=20,
-                log_callback=log_cb,
-                update_callback=update_cb,
+            # Enter monitor mode
+            from core.wifi_manager import enter_monitor_mode, start_airodump
+            self._mon_iface = await enter_monitor_mode(
+                self._selected_adapter, log_callback=log_cb
             )
+            if not self._mon_iface:
+                log_cb("[#ff0040]Failed to enter monitor mode[/]")
+                self._scanning = False
+                progress.complete("")
+                return
 
-            # Final merge of WPS/vendor data from quick scan cache
-            for net in self._networks:
+            # Start airodump-ng (runs in background)
+            result = await start_airodump(self._mon_iface, log_callback=log_cb)
+            if not result:
+                log_cb("[#ff0040]Failed to start airodump[/]")
+                from core.wifi_manager import exit_monitor_mode
+                await exit_monitor_mode(
+                    self._mon_iface, self._selected_adapter, log_callback=log_cb
+                )
+                self._mon_iface = None
+                self._scanning = False
+                progress.complete("")
+                return
+
+            self._airodump_proc, self._csv_path, self._tmp_prefix = result
+
+            # Toggle buttons: hide scan buttons, show stop
+            self.query_one("#wifi-quick-scan", Button).display = False
+            self.query_one("#wifi-deep-scan", Button).display = False
+            self.query_one("#wifi-refresh", Button).display = False
+            self.query_one("#wifi-stop-scan", Button).display = True
+
+            # Start periodic timer — reads CSV every 2 seconds
+            self._scan_start = time.time()
+            self._scan_timer = self.set_interval(2.0, self._on_scan_tick)
+
+            progress.update_progress(50, "Monitor mode — scanning...")
+
+        except Exception as e:
+            log_cb(f"[#ff0040]Error: {e}[/]")
+            progress.complete("")
+            self._scanning = False
+
+    def _on_scan_tick(self) -> None:
+        """Periodic callback: read airodump CSV and update network table."""
+        if not self._csv_path:
+            return
+        try:
+            from core.wifi_manager import _parse_airodump_csv
+            networks = _parse_airodump_csv(self._csv_path, skip_vendor=True)
+            if not networks:
+                return
+
+            # Merge WPS/vendor from quick scan cache
+            for net in networks:
                 cached = self._quick_scan_cache.get(net.bssid)
                 if cached:
                     if cached.wps_enabled:
@@ -296,11 +339,75 @@ class WiFiScreen(Screen):
                     if cached.router_vendor and not net.router_vendor:
                         net.router_vendor = cached.router_vendor
 
-            progress.complete("")
+            self._networks = networks
             self._populate_network_table()
 
-            # After deep scan, adapter is disconnected (monitor mode + NM restart)
-            # Update status to reflect this — user must reconnect manually
+            elapsed = int(time.time() - self._scan_start)
+            total_clients = sum(n.clients_count for n in networks)
+            self.query_one(ScanProgress).update_progress(
+                50,
+                f"Monitor: {elapsed}s — {len(networks)} networks, "
+                f"{total_clients} clients"
+            )
+        except Exception as exc:
+            logger.error(f"scan_tick error: {exc}")
+
+    async def _stop_deep_scan(self) -> None:
+        """Stop continuous deep scan — exit monitor mode."""
+        # Stop periodic timer
+        if self._scan_timer:
+            self._scan_timer.stop()
+            self._scan_timer = None
+
+        log = self.query_one("#recon-log", RichLog)
+
+        def log_cb(msg):
+            try:
+                log.write(f"[#00d4ff]{msg}[/]")
+            except Exception:
+                pass
+
+        try:
+            # Stop airodump
+            if self._airodump_proc:
+                from core.wifi_manager import stop_airodump
+                await stop_airodump(self._airodump_proc)
+                self._airodump_proc = None
+
+            # Final parse WITH vendor lookup
+            if self._csv_path:
+                from core.wifi_manager import _parse_airodump_csv
+                final = _parse_airodump_csv(self._csv_path)
+                if final:
+                    for net in final:
+                        cached = self._quick_scan_cache.get(net.bssid)
+                        if cached:
+                            if cached.wps_enabled:
+                                net.wps_enabled = True
+                            if cached.router_vendor and not net.router_vendor:
+                                net.router_vendor = cached.router_vendor
+                    self._networks = final
+                    self._populate_network_table()
+
+            # Exit monitor mode
+            if self._mon_iface:
+                from core.wifi_manager import exit_monitor_mode
+                await exit_monitor_mode(
+                    self._mon_iface, self._selected_adapter, log_callback=log_cb
+                )
+                self._mon_iface = None
+
+            # Cleanup temp files
+            if self._tmp_prefix:
+                from core.wifi_manager import cleanup_airodump_files
+                cleanup_airodump_files(self._tmp_prefix)
+                self._tmp_prefix = None
+
+            self._csv_path = None
+            self.query_one(ScanProgress).complete("")
+            log_cb("Scan complete")
+
+            # Update status — disconnected after monitor mode
             self.query_one("#wifi-status", Static).update(
                 f"[#888]{t('not_connected')}[/]"
             )
@@ -309,15 +416,16 @@ class WiFiScreen(Screen):
                 f"[#888]{t('recon_after_connect')}[/]"
             )
 
-            # Force full screen refresh to recover from any terminal corruption
-            # caused by airmon-ng / kernel messages during monitor mode
-            self.app.refresh(repaint=True)
-
         except Exception as e:
-            log.write(f"[#ff0040]Error: {e}[/]")
-            progress.complete("")
+            log_cb(f"[#ff0040]Error stopping scan: {e}[/]")
         finally:
             self._scanning = False
+            # Restore buttons
+            self.query_one("#wifi-stop-scan", Button).display = False
+            self.query_one("#wifi-quick-scan", Button).display = True
+            self.query_one("#wifi-deep-scan", Button).display = True
+            self.query_one("#wifi-refresh", Button).display = True
+            self.app.refresh(repaint=True)
 
     def _populate_network_table(self) -> None:
         """Fill network table with scan results."""
@@ -382,6 +490,10 @@ class WiFiScreen(Screen):
         """Connect to selected WiFi network."""
         if not self._selected_ssid:
             return
+
+        # If deep scan is running, stop it first (need managed mode to connect)
+        if self._mon_iface:
+            await self._stop_deep_scan()
 
         password = self.query_one("#wifi-password", Input).value
         log = self.query_one("#recon-log", RichLog)
@@ -546,6 +658,8 @@ class WiFiScreen(Screen):
             asyncio.create_task(self._quick_scan())
         elif btn_id == "wifi-deep-scan":
             asyncio.create_task(self._deep_scan())
+        elif btn_id == "wifi-stop-scan":
+            asyncio.create_task(self._stop_deep_scan())
         elif btn_id == "wifi-refresh":
             asyncio.create_task(self._refresh_all())
         elif btn_id == "wifi-connect":

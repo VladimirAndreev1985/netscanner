@@ -552,9 +552,139 @@ def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNe
         net.clients_count = len(clients)
         net.clients = clients
 
+    logger.debug(
+        f"CSV parsed: {len(networks)} APs, "
+        f"{sum(len(v) for v in client_map.values())} clients, "
+        f"ap_start={ap_start}, client_start={client_start}, "
+        f"total_lines={len(lines)}"
+    )
+
     result = list(networks.values())
     result.sort(key=lambda n: n.signal, reverse=True)
     return result
+
+
+# ═══════════════════════════════════════════════════════════════
+# Monitor Mode Control (continuous scanning from WiFi screen)
+# ═══════════════════════════════════════════════════════════════
+
+async def enter_monitor_mode(adapter: str = "wlan0", log_callback=None) -> str | None:
+    """Enter monitor mode on adapter. Returns monitor iface name or None."""
+    def _log(msg):
+        if log_callback:
+            log_callback(msg)
+        logger.info(msg)
+
+    mon_iface = f"{adapter}mon"
+
+    try:
+        # Suppress kernel console messages (corrupt TUI display)
+        await _run(["dmesg", "-D"], timeout=3, new_session=True)
+
+        _log("Stopping interfering processes...")
+        await _run(["airmon-ng", "check", "kill"], timeout=10, new_session=True)
+        await asyncio.sleep(1)
+
+        _log(f"Starting monitor mode on {adapter}...")
+        stdout, stderr, rc = await _run(
+            ["airmon-ng", "start", adapter], timeout=15, new_session=True
+        )
+        if rc != 0:
+            _log(f"Failed to start monitor mode: {stderr}")
+            return None
+
+        # Detect actual monitor interface name
+        for possible in [mon_iface, "mon0", f"{adapter}mon"]:
+            check_out, _, _ = await _run(["iw", "dev"])
+            if possible in check_out:
+                mon_iface = possible
+                break
+
+        _log(f"Monitor interface: {mon_iface}")
+        return mon_iface
+
+    except Exception as e:
+        logger.error(f"enter_monitor_mode error: {e}")
+        _log(f"Error: {e}")
+        return None
+
+
+async def start_airodump(mon_iface: str, log_callback=None) -> tuple | None:
+    """Start airodump-ng in background. Returns (process, csv_path, tmp_prefix)."""
+    def _log(msg):
+        if log_callback:
+            log_callback(msg)
+        logger.info(msg)
+
+    tmp_prefix = os.path.join(
+        tempfile.gettempdir(), f"netscanner_airodump_{int(time.time())}"
+    )
+    csv_file = f"{tmp_prefix}-01.csv"
+
+    _log("Capturing airwaves... (stop when ready)")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "airodump-ng", mon_iface,
+            "--write", tmp_prefix,
+            "--output-format", "csv",
+            "--write-interval", "2",
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return proc, csv_file, tmp_prefix
+    except Exception as e:
+        logger.error(f"start_airodump error: {e}")
+        _log(f"Error starting airodump: {e}")
+        return None
+
+
+async def stop_airodump(proc) -> None:
+    """Stop airodump-ng process."""
+    try:
+        import signal as sig
+        os.killpg(os.getpgid(proc.pid), sig.SIGTERM)
+        await asyncio.wait_for(proc.wait(), timeout=5)
+    except Exception:
+        try:
+            proc.kill()
+            await proc.wait()
+        except Exception:
+            pass
+
+
+async def exit_monitor_mode(
+    mon_iface: str, adapter: str, log_callback=None
+) -> None:
+    """Exit monitor mode, restart NM without auto-connect."""
+    def _log(msg):
+        if log_callback:
+            log_callback(msg)
+        logger.info(msg)
+
+    _log("Stopping monitor mode...")
+    await _run(["airmon-ng", "stop", mon_iface], timeout=10, new_session=True)
+
+    _log("Restarting NetworkManager...")
+    await _run(["systemctl", "restart", "NetworkManager"], timeout=15)
+    await asyncio.sleep(3)
+
+    # Prevent auto-reconnection
+    await _run(["nmcli", "device", "disconnect", adapter], timeout=5)
+
+    # Re-enable kernel console
+    await _run(["dmesg", "-E"], timeout=3, new_session=True)
+
+
+def cleanup_airodump_files(tmp_prefix: str) -> None:
+    """Remove temporary airodump files."""
+    for suffix in ["-01.csv", "-01.kismet.csv", "-01.kismet.netxml",
+                   "-01.cap", "-01.log.csv"]:
+        try:
+            Path(tmp_prefix + suffix).unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 # ═══════════════════════════════════════════════════════════════
