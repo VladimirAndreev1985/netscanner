@@ -146,6 +146,16 @@ class ScanScreen(Screen):
         else:
             self.post_message(self.ScanRequested(target, self._scan_type))
 
+    def set_target(self, target: str) -> None:
+        """Pre-fill the target input (called from WiFi screen)."""
+        try:
+            target_input = self.query_one("#target-input", Input)
+            target_input.value = target
+            info = self.query_one("#subnet-info", Static)
+            info.update(f"[#00ff00]WiFi → {target}[/]")
+        except Exception:
+            pass
+
     def set_progress(self, value: int, status: str = "") -> None:
         self.query_one(ScanProgress).update_progress(value, status)
 

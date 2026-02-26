@@ -410,3 +410,85 @@ Select:focus {
 LoadingIndicator {
     color: #00ff00;
 }
+
+/* ═══ WiFi Screen ═══ */
+#wifi-container {
+    padding: 1 2;
+}
+
+#adapter-buttons {
+    height: auto;
+    background: #0d1117;
+    border: solid #30363d;
+    padding: 1 2;
+    margin: 0 0 1 0;
+}
+
+#wifi-status {
+    height: auto;
+    background: #0d1117;
+    border: solid #003300;
+    padding: 1 2;
+    margin: 0 0 1 0;
+}
+
+#wifi-scan-buttons {
+    layout: horizontal;
+    height: 3;
+    margin: 0 0 1 0;
+}
+
+#wifi-networks {
+    height: auto;
+    max-height: 14;
+    background: #0d1117;
+    border: solid #30363d;
+}
+
+#selected-network-label {
+    height: auto;
+    padding: 0 0 1 0;
+}
+
+#wifi-connect-row {
+    layout: horizontal;
+    height: 3;
+    margin: 0 0 1 0;
+}
+
+#wifi-password {
+    width: 1fr;
+    margin: 0 1 0 0;
+}
+
+#recon-info {
+    height: auto;
+    background: #0d1117;
+    border: solid #30363d;
+    padding: 1 2;
+    margin: 0 0 1 0;
+}
+
+#recon-log {
+    height: auto;
+    max-height: 20;
+    background: #0a0a0f;
+    border: solid #30363d;
+    padding: 1;
+    margin: 0 0 1 0;
+}
+
+#wifi-proceed {
+    width: 100%;
+    height: 3;
+    background: #00aa00;
+    color: #000000;
+    text-style: bold;
+    text-align: center;
+    margin: 1 0;
+    border: solid #00ff00;
+}
+
+#wifi-proceed:hover {
+    background: #00ff00;
+}

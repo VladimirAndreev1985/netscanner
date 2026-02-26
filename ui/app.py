@@ -9,6 +9,7 @@ from textual.binding import Binding
 
 from core.device import Device
 from core.i18n import t, load_language
+from ui.screens.wifi_screen import WiFiScreen
 from ui.screens.scan_screen import ScanScreen
 from ui.screens.results_screen import ResultsScreen
 from ui.screens.device_screen import DeviceScreen
@@ -28,6 +29,7 @@ class NetScannerApp(App):
     CSS_PATH = CSS_PATH
 
     SCREENS = {
+        "wifi": WiFiScreen,
         "scan": ScanScreen,
         "results": ResultsScreen,
         "device": DeviceScreen,
@@ -42,6 +44,7 @@ class NetScannerApp(App):
         Binding("2", "show_results", "Results", show=True),
         Binding("3", "show_gallery", "Gallery", show=True),
         Binding("4", "show_autopwn", "Auto-Pwn", show=True),
+        Binding("5", "show_wifi", "WiFi", show=True),
     ]
 
     def __init__(self):
@@ -51,10 +54,13 @@ class NetScannerApp(App):
         self._scan_running = False
 
     def on_mount(self) -> None:
-        """Show scan screen on startup."""
-        self.push_screen("scan")
+        """Show WiFi screen on startup."""
+        self.push_screen("wifi")
 
     # ═══ Screen switching ═══
+
+    def action_show_wifi(self) -> None:
+        self.switch_screen("wifi")
 
     def action_show_scan(self) -> None:
         self.switch_screen("scan")
@@ -84,6 +90,26 @@ class NetScannerApp(App):
             title=t("help"),
             timeout=10,
         )
+
+    # ═══ WiFi Screen Events ═══
+
+    def on_wifi_screen_wifi_connected(self, event: WiFiScreen.WiFiConnected) -> None:
+        """Handle WiFi connection — store subnet info."""
+        self.notify(
+            t("connection_success", ssid=event.ssid),
+            severity="information",
+            timeout=5,
+        )
+
+    def on_wifi_screen_proceed_to_scan(self, event: WiFiScreen.ProceedToScan) -> None:
+        """Switch to scan screen with pre-filled target."""
+        self.switch_screen("scan")
+        if event.subnet:
+            try:
+                scan_screen = self.query_one(ScanScreen)
+                scan_screen.set_target(event.subnet)
+            except Exception:
+                pass
 
     # ═══ Scan Screen Events ═══
 

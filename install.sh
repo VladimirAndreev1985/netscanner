@@ -51,7 +51,7 @@ install_system_packages() {
     # Critical packages (required)
     local critical_pkgs=("nmap" "python3" "python3-pip" "python3-venv" "curl" "wget")
     # Recommended packages (optional but useful)
-    local recommended_pkgs=("masscan" "arp-scan" "nbtscan" "snmp" "ffmpeg" "hydra" "net-tools")
+    local recommended_pkgs=("masscan" "arp-scan" "nbtscan" "snmp" "ffmpeg" "hydra" "net-tools" "aircrack-ng" "wireless-tools" "iw" "network-manager" "ethtool")
     # Metasploit (usually pre-installed in Kali)
     local msf_pkgs=("metasploit-framework" "postgresql")
 
