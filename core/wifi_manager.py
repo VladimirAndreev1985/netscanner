@@ -552,12 +552,20 @@ def _parse_airodump_csv(csv_path: str, skip_vendor: bool = False) -> list[WiFiNe
         net.clients_count = len(clients)
         net.clients = clients
 
-    logger.debug(
+    total_clients = sum(len(v) for v in client_map.values())
+    logger.info(
         f"CSV parsed: {len(networks)} APs, "
-        f"{sum(len(v) for v in client_map.values())} clients, "
+        f"{total_clients} clients, "
         f"ap_start={ap_start}, client_start={client_start}, "
         f"total_lines={len(lines)}"
     )
+    # Extra diagnostics when no clients found but section exists
+    if client_start >= 0 and total_clients == 0:
+        sample_lines = lines[client_start:client_start + 5]
+        logger.info(
+            f"Client section found at line {client_start} but 0 clients parsed. "
+            f"Sample lines: {sample_lines!r}"
+        )
 
     result = list(networks.values())
     result.sort(key=lambda n: n.signal, reverse=True)

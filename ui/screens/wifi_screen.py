@@ -303,10 +303,7 @@ class WiFiScreen(Screen):
 
             self._airodump_proc, self._csv_path, self._tmp_prefix = result
 
-            # Toggle buttons: hide scan buttons, show stop
-            self.query_one("#wifi-quick-scan", Button).display = False
-            self.query_one("#wifi-deep-scan", Button).display = False
-            self.query_one("#wifi-refresh", Button).display = False
+            # Show stop button (keep other buttons visible)
             self.query_one("#wifi-stop-scan", Button).display = True
 
             # Start periodic timer — reads CSV every 2 seconds
@@ -325,9 +322,52 @@ class WiFiScreen(Screen):
         if not self._csv_path:
             return
         try:
+            import os as _os
+
+            # Diagnostic: check CSV file state
+            try:
+                fsize = _os.path.getsize(self._csv_path)
+            except OSError:
+                fsize = -1
+
+            if fsize <= 0:
+                return
+
             from core.wifi_manager import _parse_airodump_csv
             networks = _parse_airodump_csv(self._csv_path, skip_vendor=True)
+
+            # Diagnostic: read raw CSV to check for client section
+            diag_info = ""
+            try:
+                with open(self._csv_path, "r", encoding="utf-8", errors="replace") as _f:
+                    raw = _f.read()
+                has_station = "Station MAC" in raw
+                raw_lines = raw.replace("\r\n", "\n").replace("\r", "\n").splitlines()
+                diag_info = (
+                    f"csv={fsize}b lines={len(raw_lines)} "
+                    f"StationMAC={'YES' if has_station else 'NO'}"
+                )
+                # If Station MAC found, show a few lines after it for debug
+                if has_station:
+                    for idx, ln in enumerate(raw_lines):
+                        if ln.strip().lstrip("\ufeff").startswith("Station MAC"):
+                            # Show up to 3 data lines after header
+                            sample = raw_lines[idx + 1:idx + 4]
+                            sample_txt = " | ".join(
+                                s.strip()[:60] for s in sample if s.strip()
+                            )
+                            if sample_txt:
+                                diag_info += f" sample=[{sample_txt}]"
+                            break
+            except Exception:
+                pass
+
             if not networks:
+                # Show diagnostic even if no networks parsed
+                elapsed = int(time.time() - self._scan_start)
+                self.query_one(ScanProgress).update_progress(
+                    50, f"Monitor: {elapsed}s — waiting... ({diag_info})"
+                )
                 return
 
             # Merge WPS/vendor from quick scan cache
@@ -346,8 +386,8 @@ class WiFiScreen(Screen):
             total_clients = sum(n.clients_count for n in networks)
             self.query_one(ScanProgress).update_progress(
                 50,
-                f"Monitor: {elapsed}s — {len(networks)} networks, "
-                f"{total_clients} clients"
+                f"Monitor: {elapsed}s — {len(networks)} nets, "
+                f"{total_clients} clients ({diag_info})"
             )
         except Exception as exc:
             logger.error(f"scan_tick error: {exc}")
@@ -373,6 +413,19 @@ class WiFiScreen(Screen):
                 from core.wifi_manager import stop_airodump
                 await stop_airodump(self._airodump_proc)
                 self._airodump_proc = None
+
+            # Save CSV copy for diagnostics before cleanup
+            if self._csv_path:
+                try:
+                    import shutil
+                    from pathlib import Path
+                    logs_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+                    logs_dir.mkdir(exist_ok=True)
+                    saved = logs_dir / "last_airodump.csv"
+                    shutil.copy2(self._csv_path, saved)
+                    log_cb(f"CSV saved to {saved}")
+                except Exception as e:
+                    log_cb(f"Could not save CSV: {e}")
 
             # Final parse WITH vendor lookup
             if self._csv_path:
@@ -420,12 +473,8 @@ class WiFiScreen(Screen):
             log_cb(f"[#ff0040]Error stopping scan: {e}[/]")
         finally:
             self._scanning = False
-            # Restore buttons
+            # Hide stop button
             self.query_one("#wifi-stop-scan", Button).display = False
-            self.query_one("#wifi-quick-scan", Button).display = True
-            self.query_one("#wifi-deep-scan", Button).display = True
-            self.query_one("#wifi-refresh", Button).display = True
-            self.app.refresh(repaint=True)
 
     def _populate_network_table(self) -> None:
         """Fill network table with scan results."""
