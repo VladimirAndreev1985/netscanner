@@ -143,6 +143,16 @@ def _vendor_from_mac(mac: str) -> str:
         return ""
 
 
+def _base_adapter_name(adapter: str) -> str:
+    """Strip monitor mode suffix to get base adapter name.
+
+    wlan0mon -> wlan0, wlan0 -> wlan0, mon0 -> mon0
+    """
+    if adapter.endswith("mon") and len(adapter) > 3:
+        return adapter.removesuffix("mon")
+    return adapter
+
+
 # ═══════════════════════════════════════════════════════════════
 # WiFi Adapter Detection
 # ═══════════════════════════════════════════════════════════════
@@ -215,14 +225,17 @@ async def get_wifi_adapters() -> list[WiFiAdapter]:
 
 async def scan_networks(adapter: str = "wlan0") -> list[WiFiNetwork]:
     """Quick WiFi scan using nmcli (no monitor mode needed)."""
+    # Use base adapter name — nmcli can't scan on monitor interfaces
+    base = _base_adapter_name(adapter)
+
     # Force rescan
-    await _run(["nmcli", "device", "wifi", "rescan", "ifname", adapter])
+    await _run(["nmcli", "device", "wifi", "rescan", "ifname", base])
     await asyncio.sleep(2)
 
     stdout, _, rc = await _run([
         "nmcli", "-t", "-f",
         "SSID,BSSID,SIGNAL,FREQ,CHAN,SECURITY,IN-USE,WPA-FLAGS,RSN-FLAGS,MODE,RATE",
-        "device", "wifi", "list", "ifname", adapter
+        "device", "wifi", "list", "ifname", base
     ])
     if rc != 0:
         # Fallback without ifname
@@ -592,33 +605,58 @@ def _parse_airodump_csv(
 # ═══════════════════════════════════════════════════════════════
 
 async def enter_monitor_mode(adapter: str = "wlan0", log_callback=None) -> str | None:
-    """Enter monitor mode on adapter. Returns monitor iface name or None."""
+    """Enter monitor mode on adapter. Returns monitor iface name or None.
+
+    Handles the case where monitor mode is already active from a previous
+    session/crash (adapter name is e.g. wlan0mon). Detects this and reuses
+    the existing monitor interface instead of trying airmon-ng start on it.
+    """
     def _log(msg):
         if log_callback:
             log_callback(msg)
         logger.info(msg)
 
-    mon_iface = f"{adapter}mon"
+    base = _base_adapter_name(adapter)
+    mon_iface = f"{base}mon"
 
     try:
         # Suppress kernel console messages (corrupt TUI display)
         await _run(["dmesg", "-D"], timeout=3, new_session=True)
 
+        # Check if monitor mode is already active
+        check_out, _, _ = await _run(["iw", "dev"])
+        if mon_iface in check_out:
+            # Verify it's actually in monitor mode
+            in_monitor = False
+            found = False
+            for line in check_out.splitlines():
+                stripped = line.strip()
+                if f"Interface {mon_iface}" in stripped:
+                    found = True
+                elif found and "type" in stripped:
+                    in_monitor = "monitor" in stripped
+                    break
+            if in_monitor:
+                _log(f"{mon_iface} already in monitor mode — reusing")
+                await _run(["airmon-ng", "check", "kill"],
+                           timeout=10, new_session=True)
+                return mon_iface
+
         _log("Stopping interfering processes...")
         await _run(["airmon-ng", "check", "kill"], timeout=10, new_session=True)
         await asyncio.sleep(1)
 
-        _log(f"Starting monitor mode on {adapter}...")
+        _log(f"Starting monitor mode on {base}...")
         stdout, stderr, rc = await _run(
-            ["airmon-ng", "start", adapter], timeout=15, new_session=True
+            ["airmon-ng", "start", base], timeout=15, new_session=True
         )
         if rc != 0:
             _log(f"Failed to start monitor mode: {stderr}")
             return None
 
         # Detect actual monitor interface name
-        for possible in [mon_iface, "mon0", f"{adapter}mon"]:
-            check_out, _, _ = await _run(["iw", "dev"])
+        check_out, _, _ = await _run(["iw", "dev"])
+        for possible in [mon_iface, "mon0", f"{base}mon"]:
             if possible in check_out:
                 mon_iface = possible
                 break
@@ -686,6 +724,8 @@ async def exit_monitor_mode(
             log_callback(msg)
         logger.info(msg)
 
+    base = _base_adapter_name(adapter)
+
     _log("Stopping monitor mode...")
     await _run(["airmon-ng", "stop", mon_iface], timeout=10, new_session=True)
 
@@ -693,8 +733,8 @@ async def exit_monitor_mode(
     await _run(["systemctl", "restart", "NetworkManager"], timeout=15)
     await asyncio.sleep(3)
 
-    # Prevent auto-reconnection
-    await _run(["nmcli", "device", "disconnect", adapter], timeout=5)
+    # Prevent auto-reconnection (use base adapter name for nmcli)
+    await _run(["nmcli", "device", "disconnect", base], timeout=5)
 
     # Re-enable kernel console
     await _run(["dmesg", "-E"], timeout=3, new_session=True)

@@ -53,6 +53,14 @@ class WiFiScreen(Screen):
         self._scan_timer = None
         self._scan_start: float = 0
 
+    @property
+    def _base_adapter(self) -> str:
+        """Base adapter name without 'mon' suffix for nmcli operations."""
+        a = self._selected_adapter
+        if a.endswith("mon") and len(a) > 3:
+            return a.removesuffix("mon")
+        return a
+
     def compose(self) -> ComposeResult:
         yield Static(
             "[bold #00ff41]\u25c6 NETSCANNER[/] [#1a3a1a]//[/] "
@@ -197,7 +205,7 @@ class WiFiScreen(Screen):
         """Update connection status display."""
         from core.wifi_manager import get_connection_info
 
-        info = await get_connection_info(self._selected_adapter)
+        info = await get_connection_info(self._base_adapter)
         self._connection_info = info
 
         if info.ip:
@@ -234,7 +242,7 @@ class WiFiScreen(Screen):
         progress.update_progress(30, t("scanning_wifi"))
 
         from core.wifi_manager import scan_networks
-        self._networks = await scan_networks(self._selected_adapter)
+        self._networks = await scan_networks(self._base_adapter)
 
         # Cache quick scan results (WPS, vendor) for merging with deep scan later
         self._quick_scan_cache = {n.bssid: n for n in self._networks}
@@ -271,7 +279,7 @@ class WiFiScreen(Screen):
                 progress.update_progress(5, t("scanning_wifi"))
                 log_cb("Quick pre-scan for WPS/vendor data...")
                 from core.wifi_manager import scan_networks
-                quick_results = await scan_networks(self._selected_adapter)
+                quick_results = await scan_networks(self._base_adapter)
                 self._quick_scan_cache = {n.bssid: n for n in quick_results}
                 self._networks = quick_results
                 self._populate_network_table()
@@ -282,7 +290,7 @@ class WiFiScreen(Screen):
             # Enter monitor mode
             from core.wifi_manager import enter_monitor_mode, start_airodump
             self._mon_iface = await enter_monitor_mode(
-                self._selected_adapter, log_callback=log_cb
+                self._base_adapter, log_callback=log_cb
             )
             if not self._mon_iface:
                 log_cb("[#ff0040]Failed to enter monitor mode[/]")
@@ -296,7 +304,7 @@ class WiFiScreen(Screen):
                 log_cb("[#ff0040]Failed to start airodump[/]")
                 from core.wifi_manager import exit_monitor_mode
                 await exit_monitor_mode(
-                    self._mon_iface, self._selected_adapter, log_callback=log_cb
+                    self._mon_iface, self._base_adapter, log_callback=log_cb
                 )
                 self._mon_iface = None
                 self._scanning = False
@@ -459,7 +467,7 @@ class WiFiScreen(Screen):
             if self._mon_iface:
                 from core.wifi_manager import exit_monitor_mode
                 await exit_monitor_mode(
-                    self._mon_iface, self._selected_adapter, log_callback=log_cb
+                    self._mon_iface, self._base_adapter, log_callback=log_cb
                 )
                 self._mon_iface = None
 
@@ -564,7 +572,7 @@ class WiFiScreen(Screen):
 
         from core.wifi_manager import connect
         success, message = await connect(
-            self._selected_adapter,
+            self._base_adapter,
             self._selected_ssid,
             password,
         )
@@ -576,7 +584,7 @@ class WiFiScreen(Screen):
             # Notify app
             if self._connection_info:
                 self.post_message(self.WiFiConnected(
-                    adapter=self._selected_adapter,
+                    adapter=self._base_adapter,
                     ssid=self._selected_ssid,
                     ip=self._connection_info.ip,
                     subnet=self._connection_info.subnet,
@@ -589,7 +597,7 @@ class WiFiScreen(Screen):
         """Disconnect from current network."""
         from core.wifi_manager import disconnect
 
-        success, msg = await disconnect(self._selected_adapter)
+        success, msg = await disconnect(self._base_adapter)
         log = self.query_one("#recon-log", RichLog)
         if success:
             log.write(f"[#888]{t('disconnected_ok')}[/]")
