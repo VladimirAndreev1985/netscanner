@@ -279,15 +279,16 @@ class NetScannerApp(App):
 
             except asyncio.CancelledError:
                 logger.info("Scan cancelled by user")
-                screen = self.screen
-                if isinstance(screen, ScanScreen):
-                    screen.show_aborted_state()
+                # UI already updated by on_scan_screen_scan_abort_requested
             except Exception as e:
                 logger.error(f"Scan failed: {e}")
-                self.notify(f"{t('error')}: {e}", severity="error")
-                screen = self.screen
-                if isinstance(screen, ScanScreen):
-                    screen.show_standby_state()
+                try:
+                    self.notify(f"{t('error')}: {e}", severity="error")
+                    screen = self.screen
+                    if isinstance(screen, ScanScreen):
+                        screen.show_standby_state()
+                except Exception:
+                    pass
             finally:
                 self._scan_running = False
                 self._scan_task = None
