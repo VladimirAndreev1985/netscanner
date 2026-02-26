@@ -505,6 +505,11 @@ def _parse_airodump_csv(csv_path: str) -> list[WiFiNetwork]:
 
 async def connect(adapter: str, ssid: str, password: str = "") -> tuple[bool, str]:
     """Connect to WiFi network. Returns (success, message)."""
+    # Delete stale connection profiles for this SSID to avoid
+    # "802-11-wireless-security.key-mgmt: property is missing" error
+    await _run(["nmcli", "connection", "delete", "id", ssid], timeout=10)
+    await asyncio.sleep(1)
+
     cmd = ["nmcli", "device", "wifi", "connect", ssid, "ifname", adapter]
     if password:
         cmd += ["password", password]
@@ -513,9 +518,42 @@ async def connect(adapter: str, ssid: str, password: str = "") -> tuple[bool, st
 
     if rc == 0 and "successfully" in stdout.lower():
         return True, stdout.strip()
-    else:
-        error = stderr.strip() or stdout.strip() or "Unknown error"
-        return False, error
+
+    # Fallback: create connection profile manually
+    error_msg = stderr.strip() or stdout.strip() or ""
+    if "key-mgmt" in error_msg or "property is missing" in error_msg:
+        logger.info("Trying manual connection profile creation...")
+        conn_name = f"netscanner-{ssid}"
+        await _run(["nmcli", "connection", "delete", "id", conn_name], timeout=5)
+
+        add_cmd = [
+            "nmcli", "connection", "add",
+            "type", "wifi",
+            "ifname", adapter,
+            "con-name", conn_name,
+            "ssid", ssid,
+        ]
+        if password:
+            add_cmd += [
+                "wifi-sec.key-mgmt", "wpa-psk",
+                "wifi-sec.psk", password,
+            ]
+
+        stdout2, stderr2, rc2 = await _run(add_cmd, timeout=15)
+        if rc2 == 0:
+            # Activate the connection
+            stdout3, stderr3, rc3 = await _run(
+                ["nmcli", "connection", "up", conn_name, "ifname", adapter],
+                timeout=30,
+            )
+            if rc3 == 0:
+                return True, stdout3.strip()
+            else:
+                return False, stderr3.strip() or stdout3.strip() or "Activation failed"
+        else:
+            return False, stderr2.strip() or stdout2.strip() or "Profile creation failed"
+
+    return False, error_msg or "Unknown error"
 
 
 async def disconnect(adapter: str) -> tuple[bool, str]:
